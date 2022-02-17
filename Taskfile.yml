@@ -1,0 +1,16 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Setup the dependencies
+    cmds:
+      - pip3 install fastapi
+      - pip3 install "uvicorn[standard]"
+      - pip3 install pillow
+      - sudo apt-get install -y libopenjp2-7 libtiff5
+
+  run:
+    desc: Run the server
+    cmds:
+      - /home/pi/.local/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8321
+
