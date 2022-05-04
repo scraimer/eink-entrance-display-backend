@@ -7,6 +7,7 @@ tasks:
       - pip3 install fastapi
       - pip3 install "uvicorn[standard]"
       - pip3 install pillow
+      - pip3 install pytest
       - sudo apt-get install -y libopenjp2-7 libtiff5
 
   run:
