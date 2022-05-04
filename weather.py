@@ -1,12 +1,10 @@
 import os
-import sys
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageColor, ImageMath, ImageOps
-from urllib.parse import unquote, quote
-from types import SimpleNamespace
+from PIL import Image, ImageDraw, ImageFont, ImageMath, ImageOps
+from urllib.parse import unquote
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict
-
+from eink_image import EinkImage
 from image_cache import ImageCache
 
 scriptdir = Path(os.path.dirname(os.path.realpath(__file__)))
@@ -35,7 +33,7 @@ def paste_red_and_black_image(name:str, red_image:Image, black_image:Image, posi
     with Image.open(picdir / f"{name}-black.png") as im:
         black_image.paste(im, position)
 
-def create_weather_image(width:int, height:int, data:WeatherForToday):
+def create_weather_image(width:int, height:int, data:WeatherForToday) -> EinkImage:
     font_title = ImageFont.truetype(str(fontdir / 'arial.ttf'), 28)
     font_text = ImageFont.truetype(str(fontdir / 'arial.ttf'), 14)
 
@@ -100,7 +98,7 @@ def create_weather_image(width:int, height:int, data:WeatherForToday):
 
     #paste_red_and_black_image(name="sneaker", red_image=red_image, black_image=black_image, position=(30,height - 50))
 
-    return SimpleNamespace(red=red_image, black=black_image)
+    return EinkImage(red=red_image, black=black_image)
 
 def join_image(source_red:Image, source_black:Image):
     red_rgb = ImageMath.eval("convert(a,'RGB')", a=source_red)

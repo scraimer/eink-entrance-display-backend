@@ -1,9 +1,9 @@
-import traceback
 from typing import Optional
 from pathlib import Path
 import os
 import re
 import weather
+import shul_zmanim
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -39,6 +39,7 @@ async def read_item(name: str):
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
     await render_weather() # TODO: Remove this, since we don't need to render on each call
+    await render_zmanim() # TODO: Remove this, since we don't need to render on each call
     color = untaint_filename(color)
     if color not in VALID_IMAGE_NAMES:
         raise HTTPException(status_code=404, detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}")
@@ -51,6 +52,18 @@ async def read_item(color: str):
 async def render_weather():
     try:
         result = weather.make_image(dest=out_dir)
+        if not result:
+            raise HTTPException(status_code=500, detail="Error rendering weather images")
+        return {"result": "success"}
+    except Exception as ex:
+        raise
+        #formatted_ex = "".join(traceback.format_exception(type(ex), ex, ex.__traceback__))
+        #raise HTTPException(status_code=500, detail=f"Error rendering weather images\n\n{formatted_ex}") from ex
+
+@app.get("/eink/render/zmanim")
+async def render_zmanim():
+    try:
+        result = shul_zmanim.make_image(dest=out_dir)
         if not result:
             raise HTTPException(status_code=500, detail="Error rendering weather images")
         return {"result": "success"}
