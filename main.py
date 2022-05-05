@@ -65,7 +65,7 @@ async def render_zmanim():
     try:
         result = shul_zmanim.make_image(dest=out_dir)
         if not result:
-            raise HTTPException(status_code=500, detail="Error rendering weather images")
+            raise HTTPException(status_code=500, detail="Error rendering zmanim images")
         return {"result": "success"}
     except Exception as ex:
         raise

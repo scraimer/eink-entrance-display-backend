@@ -10,9 +10,9 @@ Dockerfile, and in a downloadable package that's easy to install.
 
 ## Plan
 
-* Create a git repo for this named something like `eink-entrance-display-backend`
+* ~Create a git repo for this named something like `eink-entrance-display-backend`~
 
-* Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`
+* ~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~
 
 * On the eInk RPi, have a client that downloads the image and displays it periodically
 

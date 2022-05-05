@@ -8,10 +8,9 @@ from eink_image import EinkImage
 from image_cache import ImageCache
 
 scriptdir = Path(os.path.dirname(os.path.realpath(__file__)))
-outdir = scriptdir / 'out'
-picdir = outdir / 'pic'
+outdir = Path("/tmp/eink-display")
+picdir = scriptdir / 'pic'
 fontdir = scriptdir / 'fonts'
-_cache = ImageCache(cache_dir = picdir)
 
 @dataclass
 class WeatherDataPoint:
@@ -55,7 +54,7 @@ def create_weather_image(width:int, height:int, data:WeatherForToday) -> EinkIma
         y = 50
         x = int((margins / 2) +  hourly_width * i)
         # TODO: use ImageCache to get the file (and download it if missing)
-        with Image.open(picdir / "04d.png") as im:
+        with Image.open(outdir / "04d.png") as im:
             black_image.paste(im, (x,y))
         y += 50
         black_draw.text((x,y), str(hourly.feels_like) + f"{DEG}F", font=font_text, fill=0)
