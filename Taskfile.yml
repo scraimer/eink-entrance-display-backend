@@ -1,17 +1,22 @@
 version: '3'
 
 tasks:
-  setup:
-    desc: Setup the dependencies
-    cmds:
-      - pip3 install fastapi
-      - pip3 install "uvicorn[standard]"
-      - pip3 install pillow
-      - pip3 install pytest
-      - sudo apt-get install -y libopenjp2-7 libtiff5
-
-  run:
-    desc: Run the server
+  debug_run:
+    desc: Run the server outside the server, for debugging
     cmds:
       - /home/pi/.local/bin/uvicorn main:app --reload --host 0.0.0.0 --port 8321
 
+  debug_build_docker:
+    desc: Build the docker, while preserving intermediate layers
+    cmds:
+      - docker build --tag eink-entrance-display-backend:latest --rm=false .
+
+  build_docker:
+    desc: Build the docker
+    cmds:
+      - docker build --tag eink-entrance-display-backend:latest .
+
+  run_docker:
+    desc: Run the docker
+    cmds:
+      - docker run --rm eink-entrance-display-backend:latest

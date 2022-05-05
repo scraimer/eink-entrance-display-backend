@@ -14,6 +14,10 @@ Dockerfile, and in a downloadable package that's easy to install.
 
 * ~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~
 
+* ~Create build script in taskfile to build docker~
+
+* ~Add script in taskfile to launch in docker~
+
 * On the eInk RPi, have a client that downloads the image and displays it periodically
 
 * Move to async data collection, rendering and display:
