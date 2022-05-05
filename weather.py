@@ -53,8 +53,8 @@ def create_weather_image(width:int, height:int, data:WeatherForToday) -> EinkIma
         y = 50
         x = int((margins / 2) +  hourly_width * i)
         # TODO: use ImageCache to get the file (and download it if missing)
-        with Image.open(outdir / "04d.png") as im:
-            black_image.paste(im, (x,y))
+        #with Image.open(outdir / "04d.png") as im:
+        #    black_image.paste(im, (x,y))
         y += 50
         black_draw.text((x,y), str(hourly.feels_like) + f"{DEG}F", font=font_text, fill=0)
         print(hourly)

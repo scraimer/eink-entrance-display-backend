@@ -19,4 +19,4 @@ tasks:
   run_docker:
     desc: Run the docker
     cmds:
-      - docker run --rm eink-entrance-display-backend:latest
+      - docker run --rm -it --publish 8321:8321 eink-entrance-display-backend:latest
