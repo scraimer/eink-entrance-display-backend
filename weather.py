@@ -5,7 +5,6 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Dict
 from eink_image import EinkImage
-from image_cache import ImageCache
 
 scriptdir = Path(os.path.dirname(os.path.realpath(__file__)))
 outdir = Path("/tmp/eink-display")
