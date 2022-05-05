@@ -3,5 +3,5 @@ from PIL import Image
 
 @dataclass
 class EinkImage:
-    red : Image
-    black : Image
+    red : Image.Image
+    black : Image.Image

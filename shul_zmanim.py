@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import sys
 import requests
 import os
+from PIL import Image, ImageDraw, ImageFont, ImageMath, ImageOps
+from urllib.parse import unquote
 
 from eink_image import EinkImage
 
@@ -111,16 +113,7 @@ def scrape_shabbat_items():
         sys.exit(1)
     html = r.text
     return extract_shabbat_times(html)
-
 # =======
-
-
-import sys
-import os
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageColor, ImageMath, ImageOps
-from urllib.parse import unquote, quote
-from types import SimpleNamespace
-from pathlib import Path
 
 titles_to_remove = [
     unquote('%D7%94%D7%A6%D7%92%D7%AA%20%D7%99%D7%9C%D7%93%D7%99%D7%9D'),
@@ -202,7 +195,7 @@ def create_erev_shabbat_image(width:int, height:int) -> EinkImage:
 
     return EinkImage(red=red_image, black=black_image)
 
-def join_image(src: EinkImage):
+def join_image(src: EinkImage) -> Image.Image:
     red_rgb = ImageMath.eval("convert(a,'RGB')", a=src.red)
     red_mask, _, _ = red_rgb.split()
     red_inverted = ImageOps.invert(red_rgb)
@@ -224,7 +217,8 @@ def make_image(dest: Path) -> EinkImage:
     color_image = join_image(src=shabbat_image)
 
     ## XXX: Debug, save to file
-    color_image.save(dest / "joined.png")
+    # TODO: Move this out of this function
+    color_image.save(str(dest / "joined.png"))
     shabbat_image.black.save(str(dest / "black.png"))
     shabbat_image.red.save(str(dest / "red.png"))
 

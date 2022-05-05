@@ -147,6 +147,7 @@ def make_image(dest:Path):
     weather_image = create_weather_image(width=528, height=880, data=data)
     color_image = join_image( source_black=weather_image.black, source_red=weather_image.red )
 
+    # TODO: Move this file-writing out of this function
     color_image.save(str(dest / "joined.png"))
     weather_image.black.save(str(dest / "black.png"))
     weather_image.red.save(str(dest / "red.png"))
