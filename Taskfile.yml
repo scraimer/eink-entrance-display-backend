@@ -16,7 +16,12 @@ tasks:
     cmds:
       - docker build --tag eink-entrance-display-backend:latest .
 
-  run_docker:
-    desc: Run the docker
+  debug_run_docker:
+    desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
       - docker run --rm -it --publish 8321:8321 eink-entrance-display-backend:latest
+
+  run_docker_daemon:
+    desc: Run the docker so it restarts on reboot
+    cmds:
+      - docker run -d --restart unless-stopped --publish 8321:8321 eink-entrance-display-backend:latest
