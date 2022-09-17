@@ -17,8 +17,3 @@ RUN pip3 install bs4
 RUN pip3 install requests
 RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
 RUN pip3 install pillow
-
-COPY . /app
-
-ENTRYPOINT bash -c "cd /app ; /usr/local/bin/uvicorn main:app --host 0.0.0.0 --port 8321"
-EXPOSE 8321

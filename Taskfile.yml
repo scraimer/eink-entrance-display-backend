@@ -1,6 +1,22 @@
 version: '3'
 
 tasks:
+  build_base_docker_container:
+    internal: true
+    cmds:
+      - docker build --tag eink-entrance-display-backend-base:latest docker-containers/base
+
+  build_docker:
+    desc: Build the docker
+    cmds:
+      - task: build_base_docker_container
+      - docker build --tag eink-entrance-display-backend:latest docker-containers/prod
+
+  run_docker_daemon:
+    desc: Run the docker so it restarts on reboot
+    cmds:
+      - docker run -d --restart unless-stopped --publish 8321:8321 eink-entrance-display-backend:latest
+
   debug_run:
     desc: Run the server outside the server, for debugging
     cmds:
@@ -9,19 +25,10 @@ tasks:
   debug_build_docker:
     desc: Build the docker, while preserving intermediate layers
     cmds:
-      - docker build --tag eink-entrance-display-backend:latest --rm=false .
-
-  build_docker:
-    desc: Build the docker
-    cmds:
-      - docker build --tag eink-entrance-display-backend:latest .
+      - task: build_base_docker_container
+      - docker build --tag eink-entrance-display-backend:latest --rm=false docker-containers/debug
 
   debug_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
-      - docker run --rm -it --publish 8321:8321 eink-entrance-display-backend:latest
-
-  run_docker_daemon:
-    desc: Run the docker so it restarts on reboot
-    cmds:
-      - docker run -d --restart unless-stopped --publish 8321:8321 eink-entrance-display-backend:latest
+      - docker run --rm -it --publish 8321:8321 --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend:latest
