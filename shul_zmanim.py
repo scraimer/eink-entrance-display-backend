@@ -217,7 +217,7 @@ def make_image(dest: Path) -> EinkImage:
     color_image = join_image(src=shabbat_image)
 
     ## XXX: Debug, save to file
-    # TODO: Move this out of this function
+    # TODO: Move this out of this function (To where?)
     color_image.save(str(dest / "joined.png"))
     shabbat_image.black.save(str(dest / "black.png"))
     shabbat_image.red.save(str(dest / "red.png"))
