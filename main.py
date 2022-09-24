@@ -38,6 +38,10 @@ async def read_item(name: str):
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
+    static_file = Path("/app/static/static.png")
+    if static_file.exists():
+        return str(static_file)
+
     await render_weather() # TODO: Remove this, since we don't need to render on each call
     await render_zmanim() # TODO: Remove this, since we don't need to render on each call
     color = untaint_filename(color)
