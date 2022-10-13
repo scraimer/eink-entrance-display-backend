@@ -1,12 +1,10 @@
 FROM python:3.7-slim-buster
 
-RUN apt-get update
-RUN apt-get install -y wget
-
-# TODO: The ENV and the steps below can be re-ordered for better clarity
-RUN apt-get -y install build-essential
-
-RUN apt-get -y install zlib1g-dev
+RUN apt-get update && \
+    apt-get install -y \
+    wget \
+    build-essential \
+    zlib1g-dev
 
 RUN pip3 uninstall PIL
 RUN pip3 install --upgrade pip
@@ -17,3 +15,5 @@ RUN pip3 install bs4
 RUN pip3 install requests
 RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
 RUN pip3 install pillow
+
+RUN apt-get -y install firefox-esr

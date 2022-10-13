@@ -24,6 +24,10 @@ Dockerfile, and in a downloadable package that's easy to install.
 
    * Idea #1: Create HTML files and use the firefox screenshot mechanism to store red and black versions (perhaps set red/black using CSS classes?)
 
+         docker build --tag eink-entrance-display-backend:test-with-firefox --rm=false docker-containers/base/
+
+         docker run --rm --mount type=bind,source=$PWD,target=/src eink-entrance-display-backend:test-with-firefox bash -c "firefox --screenshot /src/out.png \"--window-size=528\" file:///src/layout-test-src.html ; chmod 666 /src/out.png"
+
    * Idea #2: Split the image into sub-images. Have each sub-image copied to different x,y origins to make a single large image. (Might have to also support relative position, depending on size of other sub-images)
 
 * Move to async data collection, rendering and display:
