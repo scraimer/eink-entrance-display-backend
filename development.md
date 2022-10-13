@@ -10,15 +10,15 @@ Dockerfile, and in a downloadable package that's easy to install.
 
 ## Plan
 
-* ~Create a git repo for this named something like `eink-entrance-display-backend`~
+* ~~Create a git repo for this named something like `eink-entrance-display-backend`~~
 
-* ~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~
+* ~~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~~
 
-* ~Create build script in taskfile to build docker~
+* ~~Create build script in taskfile to build docker~~
 
-* ~Add script in taskfile to launch in docker~
+* ~~Add script in taskfile to launch in docker~~
 
-* ~On the eInk RPi, have a client that downloads the image and displays it periodically~
+* ~~On the eInk RPi, have a client that downloads the image and displays it periodically~~
 
 * Create some modular layout mechnism.
 
