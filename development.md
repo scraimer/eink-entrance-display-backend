@@ -18,7 +18,13 @@ Dockerfile, and in a downloadable package that's easy to install.
 
 * ~Add script in taskfile to launch in docker~
 
-* On the eInk RPi, have a client that downloads the image and displays it periodically
+* ~On the eInk RPi, have a client that downloads the image and displays it periodically~
+
+* Create some modular layout mechnism.
+
+   * Idea #1: Create HTML files and use the firefox screenshot mechanism to store red and black versions (perhaps set red/black using CSS classes?)
+
+   * Idea #2: Split the image into sub-images. Have each sub-image copied to different x,y origins to make a single large image. (Might have to also support relative position, depending on size of other sub-images)
 
 * Move to async data collection, rendering and display:
 
