@@ -1,9 +1,13 @@
-from typing import Optional
+import shutil
+from string import Template
+import subprocess
+from typing import Dict, Optional
 from pathlib import Path
 import os
 import re
 import weather
 import shul_zmanim
+from PIL import Image
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -36,14 +40,56 @@ async def read_item(name: str):
     joined_path.write(joined)
     return str(joined_path)
 
+
+def image_to_mono(src:Image.Image):
+    THRESH = 200
+    fn = lambda x : 255 if x > THRESH else 0
+    return src.convert('L').point(fn, mode='1')
+
+def convert_png_to_mono_png(src:Path, dest:Path) -> Path:
+    src_image = Image.open(src)
+    mono_image = image_to_mono(src_image)
+    mono_image.save(dest)
+
+def render_html_template_single_color(zmanim_dict: Dict, color: str, template: Template) -> Path:
+    zmanim_dict["color"] = color
+    content = template.substitute(zmanim_dict)
+    content_filename = "/tmp/content.html"
+    Path(content_filename).write_text(data=content, encoding="utf-8")
+    out_firefox_filename = f"/app/firefox-{color}.png"
+    p = subprocess.run(
+        ["firefox", "--screenshot", out_firefox_filename, "--window-size=528", f"file://{content_filename}"], timeout=60)
+    p.check_returncode()
+    p = subprocess.run(["chmod", "666", out_firefox_filename])
+    p.check_returncode()
+
+    out_path = out_dir / f"{color}.png"
+    make_mono = color in ("red", "black")
+    if make_mono:
+        convert_png_to_mono_png(src=out_firefox_filename, dest=out_path)
+    else:
+        shutil.copy(src=out_firefox_filename, dst=str(out_path))
+    return out_path
+
+def render_html_template(zmanim: shul_zmanim.Zmanim):
+    template_filename = "/app/layout-test-src.html"
+    template = Template(Path(template_filename).read_text(encoding="utf-8"))
+    zmanim_dict = {
+        "parasha": zmanim.parasha,
+    }
+    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="red")
+    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="black")
+    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="joined")
+
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
     static_file = Path("/app/static/static.png")
     if static_file.exists():
         return str(static_file)
 
-    await render_weather() # TODO: Remove this, since we don't need to render on each call
-    await render_zmanim() # TODO: Remove this, since we don't need to render on each call
+    zmanim = shul_zmanim.collect_data()
+    render_html_template(zmanim)
+
     color = untaint_filename(color)
     if color not in VALID_IMAGE_NAMES:
         raise HTTPException(status_code=404, detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}")

@@ -28,6 +28,8 @@ Dockerfile, and in a downloadable package that's easy to install.
 
          docker run --rm --mount type=bind,source=$PWD,target=/src eink-entrance-display-backend:test-with-firefox bash -c "firefox --screenshot /src/out.png \"--window-size=528\" file:///src/layout-test-src.html ; chmod 666 /src/out.png"
 
+   TODO: Build a template to fill with data: shul, weather, smarthome updates (why is AC on, when will it next turn on during shabbat/chag, other changes, report open windows according to temperature sensors, display house diagram, etc)
+
    * Idea #2: Split the image into sub-images. Have each sub-image copied to different x,y origins to make a single large image. (Might have to also support relative position, depending on size of other sub-images)
 
 * Move to async data collection, rendering and display:

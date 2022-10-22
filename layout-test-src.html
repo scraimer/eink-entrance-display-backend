@@ -5,14 +5,38 @@
             margin: 0;
             width: 528px;
             height: 880px;
+
+            font-smooth:never;
+            -webkit-font-smoothing : none;
+        }
+
+        .zone {
+            /* border: 1px solid black; */
+            margin-top: 5px;
+        }
+
+        .red {
+            color: red;
+        }
+        .black {
+            color: black;
+        }
+
+        .show-only-red .black,
+        .show-only-black .red {
+            visibility:hidden !important;
+        }
+        .show-only-red .red {
+            color: black !important;
         }
     </style>
 </head>
-<body>
-    <h1>Hello and welcome to the test!</h1>
+<!-- TODO: Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
+<body class="_show-only-red _show-only-black show-only-$color">
+    <h1 class="black">Hello and welcome to the test!</h1>
     <div class="zone" id="shul">
-        <h2>Shul Zmanim</h2>
-        <table>
+        <h2 class="red">$parasha</h2>
+        <table dir="rtl" class="black">
             <tr>
                 <td>הדלקת נרות</td>
                 <td>12:34</td>
@@ -32,6 +56,21 @@
                 <td>12:34</td>
             </tr>            
         </table>
+    </div>
+    <div class="zone">
+        <span class="black">Outside temperature: </span><span style="font-size: 2em" class="red">34&deg;C</span>
+        <br/>
+        <span class="black">
+            Today: 14&deg;C to 35&deg;C (15:00) with NNW 5km/h winds.<br/>
+            From 07:00 to 09:00 the temperature goes from 17&deg;C to 28&deg;C,<br/>
+            then continues rising slowly until hitting 35&deg;C at 15:00 and<br/>
+            dropping to 25&deg;C by 19:00.
+        </span>
+    </div>
+    <div class="zone">
+        <span class="black">Air-conditioning is running on all three floors.</span><br/>
+        <span class="red">Note: Someone left a door open on the top floor.</span><br/>
+        <span class="black">The air-conditioning in the dining-room will go on at 11:00.</span>
     </div>
 </body>
 </html>
