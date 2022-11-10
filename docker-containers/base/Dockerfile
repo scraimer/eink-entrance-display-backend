@@ -15,5 +15,9 @@ RUN pip3 install bs4
 RUN pip3 install requests
 RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
 RUN pip3 install pillow
+RUN pip3 install pyluach 
 
 RUN apt-get -y install firefox-esr
+
+RUN ln -fs /usr/share/zoneinfo/Israel /etc/localtime
+ENV TZ="Israel"
