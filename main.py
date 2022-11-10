@@ -75,7 +75,7 @@ def render_html_template_single_color(template_values: Dict, color: str, templat
         shutil.copy(src=out_firefox_filename, dst=str(out_path))
     return out_path
 
-def render_html_template(zmanim: shul_zmanim.Zmanim):
+def render_html_template(zmanim: shul_zmanim.Zmanim, color:str):
     template_filename = "/app/layout-test-src.html"
     template = Template(Path(template_filename).read_text(encoding="utf-8"))
     heb_date = dates.HebrewDate.today()
@@ -88,9 +88,20 @@ def render_html_template(zmanim: shul_zmanim.Zmanim):
         "heb_date": heb_date.hebrew_date_string()
     }
     all_values = {**zmanim_dict, **page_dict}
-    render_html_template_single_color(template_values=all_values, template=template, color="red")
-    render_html_template_single_color(template_values=all_values, template=template, color="black")
-    render_html_template_single_color(template_values=all_values, template=template, color="joined")
+    render_html_template_single_color(template_values=all_values, template=template, color=color)
+
+def get_filename(color:str) -> Path:
+    if color not in VALID_IMAGE_NAMES:
+        raise HTTPException(status_code=404, detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}")
+    return out_dir / (color + ".png")
+
+@app.get("/render/{color}")
+async def read_item(color: str):
+    zmanim = shul_zmanim.collect_data()
+    color = untaint_filename(color)
+    render_html_template(zmanim=zmanim, color=color)
+
+    return f"Rendered {color}. Waiting for download."
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
@@ -98,38 +109,15 @@ async def read_item(color: str):
     if static_file.exists():
         return str(static_file)
 
-    zmanim = shul_zmanim.collect_data()
-    render_html_template(zmanim)
-
     color = untaint_filename(color)
-    if color not in VALID_IMAGE_NAMES:
-        raise HTTPException(status_code=404, detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}")
-    image_path = out_dir / (color + ".png")
+    # always render "joined", since it's for dev work
+    if color == "joined":
+        zmanim = shul_zmanim.collect_data()
+        render_html_template(zmanim=zmanim, color=color)
+    image_path = get_filename(color=color)
     if not image_path.exists():
-        raise HTTPException(status_code=404, detail="The requested image could not be found")
+        raise HTTPException(
+            status_code=404,
+            detail="The requested image could not be found. "
+                   "Did you render it first?")
     return str(image_path)
-
-@app.get("/eink/render/weather")
-async def render_weather():
-    try:
-        result = weather.make_image(dest=out_dir)
-        if not result:
-            raise HTTPException(status_code=500, detail="Error rendering weather images")
-        return {"result": "success"}
-    except Exception as ex:
-        raise
-        #formatted_ex = "".join(traceback.format_exception(type(ex), ex, ex.__traceback__))
-        #raise HTTPException(status_code=500, detail=f"Error rendering weather images\n\n{formatted_ex}") from ex
-
-@app.get("/eink/render/zmanim")
-async def render_zmanim():
-    try:
-        result = shul_zmanim.make_image(dest=out_dir)
-        if not result:
-            raise HTTPException(status_code=500, detail="Error rendering zmanim images")
-        return {"result": "success"}
-    except Exception as ex:
-        raise
-        #formatted_ex = "".join(traceback.format_exception(type(ex), ex, ex.__traceback__))
-        #raise HTTPException(status_code=500, detail=f"Error rendering weather images\n\n{formatted_ex}") from ex
-
