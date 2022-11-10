@@ -1,6 +1,8 @@
+import datetime
 import shutil
 from string import Template
 import subprocess
+from sys import stderr
 from typing import Dict, Optional
 from pathlib import Path
 import os
@@ -8,6 +10,8 @@ import re
 import weather
 import shul_zmanim
 from PIL import Image
+from datetime import date
+from pyluach import dates, hebrewcal, parshios
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -51,9 +55,9 @@ def convert_png_to_mono_png(src:Path, dest:Path) -> Path:
     mono_image = image_to_mono(src_image)
     mono_image.save(dest)
 
-def render_html_template_single_color(zmanim_dict: Dict, color: str, template: Template) -> Path:
-    zmanim_dict["color"] = color
-    content = template.substitute(zmanim_dict)
+def render_html_template_single_color(template_values: Dict, color: str, template: Template) -> Path:
+    template_values["color"] = color
+    content = template.substitute(**template_values)
     content_filename = "/tmp/content.html"
     Path(content_filename).write_text(data=content, encoding="utf-8")
     out_firefox_filename = f"/app/firefox-{color}.png"
@@ -74,12 +78,19 @@ def render_html_template_single_color(zmanim_dict: Dict, color: str, template: T
 def render_html_template(zmanim: shul_zmanim.Zmanim):
     template_filename = "/app/layout-test-src.html"
     template = Template(Path(template_filename).read_text(encoding="utf-8"))
+    heb_date = dates.HebrewDate.today()
     zmanim_dict = {
-        "parasha": zmanim.parasha,
+        "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True)
     }
-    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="red")
-    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="black")
-    render_html_template_single_color(zmanim_dict=zmanim_dict, template=template, color="joined")
+    page_dict = {
+        "date": date.today().strftime("%A, %-d of %B %Y"),
+        "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
+        "heb_date": heb_date.hebrew_date_string()
+    }
+    all_values = {**zmanim_dict, **page_dict}
+    render_html_template_single_color(template_values=all_values, template=template, color="red")
+    render_html_template_single_color(template_values=all_values, template=template, color="black")
+    render_html_template_single_color(template_values=all_values, template=template, color="joined")
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):

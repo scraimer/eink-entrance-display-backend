@@ -3,11 +3,37 @@
     <style type="text/css">
         .body {
             margin: 0;
-            width: 528px;
-            height: 880px;
+            padding: 0;
 
             font-smooth:never;
             -webkit-font-smoothing : none;
+        }
+
+        #eink-display-size {
+            width: 528px;
+            height: 880px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        h1 {
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+        }
+
+        #footer {
+            font-size: 10px;
+            display: block;
+            width: 200px;
+            height: 20px;
+            position: absolute;
+            bottom: -9px;
+            left: 0px;
         }
 
         .zone {
@@ -31,46 +57,49 @@
         }
     </style>
 </head>
-<!-- TODO: Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
+<!-- Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
 <body class="_show-only-red _show-only-black show-only-$color">
-    <h1 class="black">Hello and welcome to the test!</h1>
-    <div class="zone" id="shul">
-        <h2 class="red">$parasha</h2>
-        <table dir="rtl" class="black">
-            <tr>
-                <td>הדלקת נרות</td>
-                <td>12:34</td>
-            </tr>
-            <tr>
-                <td>קבלת שבת</td>
-                <td>12:34</td>
-            </tr>
-            <tr>
-                <td>שחרית</td>
-                <td>12:34</td>
-                <td>12:34</td>
-                <td>12:34</td>
-            </tr>
-            <tr>
-                <td>מוצאי שבת</td>
-                <td>12:34</td>
-            </tr>            
-        </table>
-    </div>
-    <div class="zone">
-        <span class="black">Outside temperature: </span><span style="font-size: 2em" class="red">34&deg;C</span>
-        <br/>
-        <span class="black">
-            Today: 14&deg;C to 35&deg;C (15:00) with NNW 5km/h winds.<br/>
-            From 07:00 to 09:00 the temperature goes from 17&deg;C to 28&deg;C,<br/>
-            then continues rising slowly until hitting 35&deg;C at 15:00 and<br/>
-            dropping to 25&deg;C by 19:00.
-        </span>
-    </div>
-    <div class="zone">
-        <span class="black">Air-conditioning is running on all three floors.</span><br/>
-        <span class="red">Note: Someone left a door open on the top floor.</span><br/>
-        <span class="black">The air-conditioning in the dining-room will go on at 11:00.</span>
+    <div id="eink-display-size">
+        <h1 class="black">$date<br>$heb_date</h1>
+        <div class="zone" id="shul" dir="rtl">
+            <h2 class="red">$parasha</h2>
+            <table dir="rtl" class="black">
+                <tr>
+                    <td>הדלקת נרות</td>
+                    <td>12:34</td>
+                </tr>
+                <tr>
+                    <td>קבלת שבת</td>
+                    <td>12:34</td>
+                </tr>
+                <tr>
+                    <td>שחרית</td>
+                    <td>12:34</td>
+                    <td>12:34</td>
+                    <td>12:34</td>
+                </tr>
+                <tr>
+                    <td>מוצאי שבת</td>
+                    <td>12:34</td>
+                </tr>            
+            </table>
+        </div>
+        <div class="zone">
+            <span class="black">Outside temperature: </span><span style="font-size: 2em" class="red">34&deg;C</span>
+            <br/>
+            <span class="black">
+                Today: 14&deg;C to 35&deg;C (15:00) with NNW 5km/h winds.<br/>
+                From 07:00 to 09:00 the temperature goes from 17&deg;C to 28&deg;C,<br/>
+                then continues rising slowly until hitting 35&deg;C at 15:00 and<br/>
+                dropping to 25&deg;C by 19:00.
+            </span>
+        </div>
+        <div class="zone">
+            <span class="black">Air-conditioning is running on all three floors.</span><br/>
+            <span class="red">Note: Someone left a door open on the top floor.</span><br/>
+            <span class="black">The air-conditioning in the dining-room will go on at 11:00.</span>
+        </div>
+        <div id="footer">Rendered $render_timestamp</div>
     </div>
 </body>
 </html>
