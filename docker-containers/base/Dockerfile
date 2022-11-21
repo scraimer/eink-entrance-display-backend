@@ -21,3 +21,5 @@ RUN apt-get -y install firefox-esr
 
 RUN ln -fs /usr/share/zoneinfo/Israel /etc/localtime
 ENV TZ="Israel"
+
+RUN pip3 install zmanim

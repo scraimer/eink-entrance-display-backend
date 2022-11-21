@@ -62,13 +62,14 @@ def render_html_template_single_color(template_values: Dict, color: str, templat
         shutil.copy(src=out_firefox_filename, dst=str(out_path))
     return out_path
 
-def render_html_template(zmanim: shul_zmanim.Zmanim, color:str):
+def render_html_template(zmanim: Optional[shul_zmanim.ShabbatZmanim], color:str):
     template_filename = "/app/layout-test-src.html"
     template = Template(Path(template_filename).read_text(encoding="utf-8"))
     heb_date = dates.HebrewDate.today()
     zmanim_dict = {
         "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True)
     }
+    zmanim_dict = {**zmanim_dict, **{k:v for k,v in zmanim.times.items()}}
     page_dict = {
         "date": date.today().strftime("%A, %-d of %B %Y"),
         "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
