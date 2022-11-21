@@ -31,19 +31,6 @@ def untaint_filename(filename:str) -> str:
 
 VALID_IMAGE_NAMES = ['red', 'black', 'joined']
 
-# https://openweathermap.org/img/wn/02d.png
-@app.get("/test/{name}", response_class=FileResponse)
-async def read_item(name: str):
-    name = untaint_filename(name)
-    src_path = out_dir / name
-    if not src_path.exists():
-        raise HTTPException(status_code=404, detail="The requested image could not be found")
-    red, black = flatten(image_path)
-    joined = join_images(red=red, black=black)
-    joined_path = out_dir / (name + "-joined.png")
-    joined_path.write(joined)
-    return str(joined_path)
-
 
 def image_to_mono(src:Image.Image):
     THRESH = 200
@@ -95,12 +82,14 @@ def get_filename(color:str) -> Path:
         raise HTTPException(status_code=404, detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}")
     return out_dir / (color + ".png")
 
-@app.get("/render/{color}")
-async def read_item(color: str):
+def render(color:str):
     zmanim = shul_zmanim.collect_data()
     color = untaint_filename(color)
     render_html_template(zmanim=zmanim, color=color)
 
+@app.get("/render/{color}")
+async def read_item(color: str):
+    render(color=color)
     return f"Rendered {color}. Waiting for download."
 
 @app.get("/eink/{color}", response_class=FileResponse)
@@ -112,8 +101,7 @@ async def read_item(color: str):
     color = untaint_filename(color)
     # always render "joined", since it's for dev work
     if color == "joined":
-        zmanim = shul_zmanim.collect_data()
-        render_html_template(zmanim=zmanim, color=color)
+        render(color=color)
     image_path = get_filename(color=color)
     if not image_path.exists():
         raise HTTPException(
