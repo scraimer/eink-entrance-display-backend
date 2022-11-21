@@ -1,7 +1,10 @@
 <html>
 <head>
     <style type="text/css">
-        .body {
+        body, td {
+            font-size: 24px;
+        }
+        body {
             margin: 0;
             padding: 0;
 
@@ -48,6 +51,16 @@
             color: black;
         }
 
+        #fake {
+            position: absolute;
+            top: 420px;
+            left: 0px;
+            width: 100%;
+            height: 440px;
+            background-image: url("/app/50-percent-screen-white.png");
+            background-repeat: repeat;
+        }
+
         .show-only-red .black,
         .show-only-black .red {
             visibility:hidden !important;
@@ -66,21 +79,21 @@
             <table dir="rtl" class="black">
                 <tr>
                     <td>הדלקת נרות</td>
-                    <td>12:34</td>
+                    <td>16:22</td>
                 </tr>
                 <tr>
-                    <td>קבלת שבת</td>
-                    <td>12:34</td>
+                    <td>מנחה וקבלת שבת</td>
+                    <td>16:27</td>
                 </tr>
                 <tr>
                     <td>שחרית</td>
-                    <td>12:34</td>
-                    <td>12:34</td>
-                    <td>12:34</td>
+                    <td>06:45</td>
+                    <td>08:30</td>
+                    <td>09:00</td>
                 </tr>
                 <tr>
                     <td>מוצאי שבת</td>
-                    <td>12:34</td>
+                    <td>17:16</td>
                 </tr>            
             </table>
         </div>
@@ -101,5 +114,6 @@
         </div>
         <div id="footer" class="black">Rendered $render_timestamp</div>
     </div>
+    <div id="fake">&nbsp;</div>
 </body>
 </html>
