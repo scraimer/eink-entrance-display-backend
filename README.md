@@ -1,11 +1,11 @@
 ## Installation and Run
 
-Create a file named `secrets.py` that looks something like this
+Create a file named `appsecrets.py` that looks something like this
 
     # This is a file of secrets that won't be committed
     weather_api_key:str = "12345_your_api_key_67890"
 
-After the `secrets.py` has been placed in the same directory as `main.py`,
+After the `appsecrets.py` has been placed in the same directory as `main.py`,
 you can launch the daemon.
 
     go install github.com/go-task/task/v3/cmd/task@latest
