@@ -2,7 +2,6 @@ import datetime
 import shutil
 from string import Template
 import subprocess
-from sys import stderr
 from typing import Dict, Optional
 from pathlib import Path
 import os
@@ -11,7 +10,7 @@ import weather
 import shul_zmanim
 from PIL import Image
 from datetime import date
-from pyluach import dates, hebrewcal, parshios
+from pyluach import dates, parshios
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -62,7 +61,28 @@ def render_html_template_single_color(template_values: Dict, color: str, templat
         shutil.copy(src=out_firefox_filename, dst=str(out_path))
     return out_path
 
-def render_html_template(zmanim: Optional[shul_zmanim.ShabbatZmanim], color:str):
+def weather_report(weather_forcast: weather.WeatherForToday):
+    hours_template = Template("""<td>
+        $hour<br/>
+        $feels_like_rounded&deg;C<br/>
+        <img src="$icon_url"/><br/>
+        $hour_desc<br/>
+        $detailed_status
+    </td>""")
+
+    hours_str = ""
+    for hour in weather_forcast.hourlies.values():
+        hours_str += hours_template.substitute(**hour.__dict__, feels_like_rounded=round(hour.feels_like))
+    
+    return f"""
+    <table>
+        <tr>
+            {hours_str}
+        </tr>
+    </table>
+    """
+
+def render_html_template(zmanim: Optional[shul_zmanim.ShabbatZmanim], weather_forecast: weather.WeatherForToday, color:str):
     template_filename = "/app/layout-test-src.html"
     template = Template(Path(template_filename).read_text(encoding="utf-8"))
     heb_date = dates.HebrewDate.today()
@@ -70,12 +90,16 @@ def render_html_template(zmanim: Optional[shul_zmanim.ShabbatZmanim], color:str)
         "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True)
     }
     zmanim_dict = {**zmanim_dict, **{k:v for k,v in zmanim.times.items()}}
+    weather_dict = {
+        "current_temp": round(weather_forecast.current.feels_like),
+        "weather_report": weather_report(weather_forcast=weather_forecast),
+    }
     page_dict = {
         "date": date.today().strftime("%A, %-d of %B %Y"),
         "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string()
     }
-    all_values = {**zmanim_dict, **page_dict}
+    all_values = {**zmanim_dict, **page_dict, **weather_dict}
     render_html_template_single_color(template_values=all_values, template=template, color=color)
 
 def get_filename(color:str) -> Path:
@@ -85,8 +109,12 @@ def get_filename(color:str) -> Path:
 
 def render(color:str):
     zmanim = shul_zmanim.collect_data()
+    weather_forecast = weather.collect_data()
     color = untaint_filename(color)
-    render_html_template(zmanim=zmanim, color=color)
+    render_html_template(zmanim=zmanim, weather_forecast=weather_forecast, color=color)
+
+    filename = get_filename(color=color)
+    # TODO: Verify that the image is 528x880
 
 @app.get("/render/{color}")
 async def read_item(color: str):
