@@ -10,6 +10,7 @@ from datetime import datetime
 from pyowm.owm import OWM
 from pyowm.weatherapi25.weathercoderegistry import WeatherCodeRegistry
 import secrets
+from config import config
 
 # scriptdir = Path(os.path.dirname(os.path.realpath(__file__)))
 # outdir = Path("/tmp/eink-display")
@@ -135,13 +136,20 @@ class WeatherForToday:
 
 #     return weather_image
 
-def collect_data() -> WeatherForToday:    
-    # Enter the API key you got from the OpenWeatherMap website, save it
-    # as `weather_api_key` in the file `secrets.py`
+def collect_data() -> WeatherForToday:
+    # Setup: The API key you got from the OpenWeatherMap website, save it
+    #        as `weather_api_key` in the file `secrets.py`
+    #
+    # The code below is based on
+    # https://pyowm.readthedocs.io/en/latest/v3/code-recipes.html#weather_forecasts
+    #
     api_key = secrets.weather_api_key
     owm = OWM(api_key)
     mgr = owm.weather_manager()
-    owm_forecast = mgr.one_call(lat=31.392880, lon=35.091116)
+    owm_forecast = mgr.one_call(
+        lat=config.efrat.lat,
+        lon=config.efrat.lon
+    )
 
     out_data = WeatherForToday(
         current=WeatherDataPoint(
