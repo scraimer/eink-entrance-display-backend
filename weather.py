@@ -47,8 +47,9 @@ def collect_data() -> WeatherForToday:
         "07:00": "To school",
         "14:00": "From school",
         "16:00": "Pickup",
-        f"07:00 {DAY_SUFFIX}": "To school",
     }
+    school_hours_with_suffix = {k + DAY_SUFFIX: v for k, v in school_hours.items()}
+    school_hours = {**school_hours, **school_hours_with_suffix}
     for hourly in owm_forecast.forecast_hourly:
         ts = hourly.reference_time("unix")
         dt = datetime.utcfromtimestamp(ts)

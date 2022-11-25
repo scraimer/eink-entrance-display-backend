@@ -1,16 +1,19 @@
 <html>
+
 <head>
     <style type="text/css">
-        body, td {
+        body,
+        td {
             font-size: 24px;
         }
+
         body {
             margin: 0;
             padding: 0;
             background-color: white;
 
-            font-smooth:never;
-            -webkit-font-smoothing : none;
+            font-smooth: never;
+            -webkit-font-smoothing: none;
         }
 
         #eink-display-size {
@@ -30,6 +33,12 @@
             text-align: center;
         }
 
+        h2 {
+            padding: 0;
+            margin: 0;
+            3
+        }
+
         #footer {
             font-size: 10px;
             display: block;
@@ -41,7 +50,6 @@
         }
 
         .zone {
-            /* border: 1px solid black; */
             margin-top: 5px;
         }
 
@@ -51,13 +59,84 @@
             margin: 2px;
         }
 
-        #weather-table td {
+        #weather-table ul {
+            padding: 0;
+            margin: 0;
+        }
+
+        #weather-table>ul>li {
+            list-style: none;
+            display: block;
+        }
+
+        #weather-table>ul>li {
+            display: inline-block;
+            vertical-align: top;
+            height: 220px;
+        }
+
+        #weather-table>ul>li ul {}
+
+        #weather-table>ul>li li {
+            width: 90px;
+            overflow: hidden;
+        }
+
+        #weather-table li.hour {
+            height: 50px;
+            width: 100%;
             text-align: center;
+            display: block;
+        }
+
+        #weather-table li.hour .tomorrow {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 10px;
+        }
+
+        #weather-table li.temp {
+            font-size: 30px;
+            font-weight: bold;
+            line-height: 30px;
+            height: 30px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.icon {
+            line-height: 50px;
+            height: 50px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.type {
+            font-size: 15px;
+            line-height: 15px;
+            height: 15px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.status {
+            height: 70px;
+            text-align: center;
+            display: block;
+            overflow: hidden;
         }
 
         .red {
             color: red;
         }
+
         .black {
             color: black;
         }
@@ -74,14 +153,16 @@
 
         .show-only-red .black,
         .show-only-black .red {
-            visibility:hidden !important;
+            visibility: hidden !important;
         }
+
         .show-only-red .red {
             color: black !important;
         }
     </style>
 </head>
 <!-- Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
+
 <body class="_show-only-red _show-only-black show-only-$color" id="eink-display-size">
     <h1 class="black">$date<br>$heb_date</h1>
     <div class="zone" id="shul" dir="rtl">
@@ -104,12 +185,13 @@
             <tr>
                 <td>מוצאי שבת</td>
                 <td>$tzet_shabat</td>
-            </tr>            
+            </tr>
         </table>
     </div>
     <div class="zone">
-        <span class="black">Outside temperature: </span><span style="font-size: 2em" class="red">$current_temp&deg;C</span>
-        <br/>
+        <span class="black">Outside temperature: </span><span style="font-size: 2em"
+            class="red">$current_temp&deg;C</span>
+        <br />
         <span class="black">
             $weather_report
         </span>
@@ -123,11 +205,12 @@
         -->
     </div>
     <div class="zone">
-        <span class="black">Air-conditioning is running on all three floors.</span><br/>
-        <span class="red">Note: Someone left a door open on the top floor.</span><br/>
+        <span class="black">Air-conditioning is running on all three floors.</span><br />
+        <span class="red">Note: Someone left a door open on the top floor.</span><br />
         <span class="black">The air-conditioning in the dining-room will go on at 11:00.</span>
     </div>
     <div id="footer" class="black">Rendered $render_timestamp</div>
     <div id="fake">&nbsp;</div>
 </body>
+
 </html>
