@@ -75,7 +75,7 @@ def weather_report(weather_forcast: weather.WeatherForToday):
         hours_str += hours_template.substitute(**hour.__dict__, feels_like_rounded=round(hour.feels_like))
     
     return f"""
-    <table>
+    <table id="weather-table">
         <tr>
             {hours_str}
         </tr>
