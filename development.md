@@ -42,6 +42,15 @@ Dockerfile, and in a downloadable package that's easy to install.
 
 * The zmanim data for Efrat is: https://www.efrat.muni.il/he/%D7%96%D7%9E%D7%A0%D7%99-%D7%9B%D7%A0%D7%99%D7%A1%D7%AA-%D7%94%D7%A9%D7%91%D7%AA/
 
+* better png icons: translate orange to red, and gray to 50% black
+
+* Show events from a Google calendar
+
+* Smaller date, remove padding
+
+* Verify that PNG is the right size; force it to the right size by cutting it
+  down to size.
+
 ## Notes
 
 * To get the rendered html from the container do this:
