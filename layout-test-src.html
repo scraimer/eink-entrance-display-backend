@@ -27,7 +27,6 @@
         }
 
         h1 {
-            width: 100%;
             padding: 0;
             margin: 0;
             text-align: center;
@@ -36,7 +35,8 @@
         h2 {
             padding: 0;
             margin: 0;
-            3
+            line-height: 1.0em;
+            font-size: 36px;
         }
 
         #footer {
@@ -50,13 +50,26 @@
         }
 
         .zone {
-            margin-top: 5px;
+            margin-top: 0px;
+        }
+
+        #title-day-of-week {
+            font-size: 36px;
+            float: left;
+        }
+
+        #title-date {
+            font-size: 18px;
+        }
+
+        #title-hebrew-date {
+            font-size: 18px;
         }
 
         #weather-table {
             border: 1px solid black;
-            width: 524px;
-            margin: 2px;
+            width: 526px;
+            margin: 0px;
         }
 
         #weather-table ul {
@@ -78,7 +91,7 @@
         #weather-table>ul>li ul {}
 
         #weather-table>ul>li li {
-            width: 90px;
+            width: 120px;
             overflow: hidden;
         }
 
@@ -97,10 +110,10 @@
         }
 
         #weather-table li.temp {
-            font-size: 30px;
+            font-size: 40px;
+            line-height: 40px;
+            height: 40px;
             font-weight: bold;
-            line-height: 30px;
-            height: 30px;
             width: 100%;
             text-align: center;
             display: block;
@@ -143,7 +156,7 @@
 
         #fake {
             position: absolute;
-            top: 650px;
+            top: 500px;
             left: 0px;
             width: 100%;
             height: 210px;
@@ -164,7 +177,11 @@
 <!-- Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
 
 <body class="_show-only-red _show-only-black show-only-$color" id="eink-display-size">
-    <h1 class="black">$date<br>$heb_date</h1>
+    <h1 class="black">
+        <div id="title-day-of-week">$day_of_week</div>
+        <div id="title-date">$date</div>
+        <div id="title-hebrew-date">$heb_date</div>
+    </h1>
     <div class="zone" id="shul" dir="rtl">
         <h2 class="red">$parasha</h2>
         <table dir="rtl" class="black">

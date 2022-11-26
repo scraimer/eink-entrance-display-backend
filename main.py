@@ -92,7 +92,8 @@ def weather_report(weather_forcast: weather.WeatherForToday):
     )
 
     hours_str = ""
-    for hour in weather_forcast.hourlies.values():
+    hours_to_display = list(weather_forcast.hourlies.values())[0:4]
+    for hour in hours_to_display:
         hour_modified = hour.hour[0:5] + (
             '<span class="tomorrow">tomorrow</span>' if len(hour.hour) > 5 else ""
         )
@@ -128,7 +129,8 @@ def render_html_template(
         "weather_report": weather_report(weather_forcast=weather_forecast),
     }
     page_dict = {
-        "date": date.today().strftime("%A, %-d of %B %Y"),
+        "day_of_week": date.today().strftime("%A"),
+        "date": date.today().strftime("%-d of %B %Y"),
         "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
     }
