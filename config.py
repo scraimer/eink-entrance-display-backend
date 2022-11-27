@@ -8,8 +8,10 @@ class GeoLocation:
     lon: float
     """Longitude. It's the part after the 'E' or 'W'"""
 
+
 @dataclass
 class Config:
     efrat: GeoLocation
+
 
 config = Config(efrat=GeoLocation(lat=31.392880, lon=35.091116))

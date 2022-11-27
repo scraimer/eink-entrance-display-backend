@@ -14,20 +14,20 @@ SRC_FILENAME = "efrat-zmanim-src-2022113.html"
 OUT_FILE = "efrat_zmanim.json"
 
 
-def text_date_in_heb_to_date(src:str):
+def text_date_in_heb_to_date(src: str):
     HEB_MONTHS = {
-        "ינו׳":1,
-        "פבר׳":2,
-        "מרץ":3,
-        "אפר׳":4,
-        "מאי":5,
-        "יוני":6,
-        "יולי":7,
-        "אוג׳":8,
-        "ספט׳":9,
-        "אוק׳":10,
-        "נוב׳":11,
-        "דצמ׳":12,
+        "ינו׳": 1,
+        "פבר׳": 2,
+        "מרץ": 3,
+        "אפר׳": 4,
+        "מאי": 5,
+        "יוני": 6,
+        "יולי": 7,
+        "אוג׳": 8,
+        "ספט׳": 9,
+        "אוק׳": 10,
+        "נוב׳": 11,
+        "דצמ׳": 12,
     }
     field = src.split(" ")
     if len(field) != 3:
@@ -63,10 +63,12 @@ def extract_zmanim(doc: bs4.BeautifulSoup):
         }
         out_rows.append(row_data)
     return out_rows
-    
+
 
 def main():
-    doc = bs4.BeautifulSoup(Path(SRC_FILENAME).read_text(encoding="utf-8"), features="html.parser")
+    doc = bs4.BeautifulSoup(
+        Path(SRC_FILENAME).read_text(encoding="utf-8"), features="html.parser"
+    )
     out_rows = extract_zmanim(doc)
     Path(OUT_FILE).write_text(data=json.dumps(out_rows), encoding="utf-8")
 
