@@ -117,8 +117,6 @@ def render_html_template(
     weather_forecast: weather.WeatherForToday,
     color: str,
 ):
-    template_filename = "/app/layout-test-src.html"
-    template = Template(Path(template_filename).read_text(encoding="utf-8"))
     heb_date = dates.HebrewDate.today()
     zmanim_dict = {
         "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True)
@@ -135,6 +133,25 @@ def render_html_template(
         "heb_date": heb_date.hebrew_date_string(),
     }
     all_values = {**zmanim_dict, **page_dict, **weather_dict}
+
+    TEMPLATE_FILENAME = "/app/layout-test-src.html"
+    template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
+    p = re.compile("\\$[a-z_]+")
+    template_required_keys = set(p.findall(template_text)) - set(["$color"])
+    template = Template(template_text)
+
+    dollar_keys = set([f"${x}" for x in all_values.keys()])
+    missing_keys = template_required_keys - dollar_keys
+    if missing_keys:
+        print(
+            "Warning: the follow template variable missing.\n"
+            "They will be replaced by a placeholder:\n" + str(missing_keys)
+        )
+        # raise KeyError("Required keys are missing:", missing_keys)
+        # Fill in the missing keys, to avoid failing
+        for k in missing_keys:
+            all_values[k[1:]] = "[ERR]"
+
     render_html_template_single_color(
         template_values=all_values, template=template, color=color
     )

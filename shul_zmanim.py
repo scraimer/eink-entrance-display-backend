@@ -42,10 +42,16 @@ def collect_data() -> ShabbatZmanim:
         keys = ("name", "candle_lighting", "tzet_shabat", "fast_start", "fast_end")
         out_data = {k:v for k,v in z.items() if k in keys and v}
         if z["shabbat"]:
-            kabalat_shabbat = kbalat_shabat_from_candle_lighting(
-                candle_lighting = out_data["candle_lighting"]
-            )
-            out_data["kabalat_shabbat"] = kabalat_shabbat
+            try:
+                kabalat_shabbat = kbalat_shabat_from_candle_lighting(
+                    candle_lighting = out_data["candle_lighting"]
+                )
+                out_data["kabalat_shabbat"] = kabalat_shabbat
+            except Exception:
+                print(
+                    f"Error parsing kabalat shabbat from: "
+                    f"{out_data['candle_lighting']}"
+                )
 
         # {
         #     "הדלקת נרות": ["--:--"],
