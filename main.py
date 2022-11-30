@@ -11,6 +11,7 @@ import shul_zmanim
 from PIL import Image
 from datetime import date
 from pyluach import dates, parshios
+import urllib
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -77,16 +78,113 @@ def render_html_template_single_color(
     return out_path
 
 
-def weather_report(weather_forcast: weather.WeatherForToday):
+def image_single_color_channel_filename(img_url: str, color: str) -> str:
+    url = urllib.parse.urlparse(img_url)
+    return f"{color}-{Path(url.path).name}"
+
+
+EXTRACTED_CACHE = Path("/image-cache")
+
+
+import colorsys
+
+
+def rgb_to_hsv(src):
+    (r, g, b) = src
+    (r, g, b) = (r / 255, g / 255, b / 255)
+    (h, s, v) = colorsys.rgb_to_hsv(r, g, b)
+    return (h, s, v)
+
+
+def extract_red(src: Image.Image) -> Image.Image:
+    red_img, green_img, blue_img, alpha_img = src.split()
+    red_data = red_img.getdata()
+    green_data = green_img.getdata()
+    blue_data = blue_img.getdata()
+    alpha_data = alpha_img.getdata()
+    grayscale = Image.new("LA", (src.width, src.height), 0)
+    assert len(red_data) == len(alpha_data)
+    THRESH = 180
+    fn = lambda x: 255 if x < THRESH else 0
+    grayscale_data = []
+    for i in range(0, len(red_data)):
+        (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
+        if (h <= 0.1 or h >= 0.9) and (v >= 0.8) and (s >= 0.3):
+            grayscale_data.append(0)
+        else:
+            grayscale_data.append(255)
+    # grayscale_data = [fn(x) for x in red_data]
+    grayscale.putdata(grayscale_data)
+    grayscale.putalpha(alpha_img)
+    return grayscale
+
+
+def extract_black_and_gray(src: Image.Image) -> Image.Image:
+    red_img, green_img, blue_img, alpha_img = src.split()
+    red_data = red_img.getdata()
+    green_data = green_img.getdata()
+    blue_data = blue_img.getdata()
+    alpha_data = alpha_img.getdata()
+    grayscale = Image.new("LA", (src.width, src.height), 0)
+    assert len(red_data) == len(alpha_data)
+    THRESH = 180
+    fn = lambda x: 255 if x < THRESH else 0
+    grayscale_data = []
+    dither_counter = 0
+    for i in range(0, len(red_data)):
+        (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
+        if s <= 0.3:
+            if v < 0.3:
+                grayscale_data.append(0)
+            elif v > 0.99:
+                grayscale_data.append(255)
+            else:
+                dither_counter += 1
+                if dither_counter % 2 == 0:
+                    grayscale_data.append(0)
+                else:
+                    grayscale_data.append(255)
+        else:
+            grayscale_data.append(255)
+    # grayscale_data = [fn(x) for x in red_data]
+    grayscale.putdata(grayscale_data)
+    grayscale.putalpha(alpha_img)
+    return grayscale
+
+
+def image_extract_color_channel(img_url: str, color: str) -> str:
+    if color == "joined":
+        return img_url
+
+    filename = image_single_color_channel_filename(img_url=img_url, color=color)
+    EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
+    filepath = EXTRACTED_CACHE / filename
+    if not filepath.exists():  # TODO: Make sure the file is no more than 7d old
+        url = urllib.parse.urlparse(img_url)
+        src_filename = f"/tmp/src.{Path(url.path).suffix}"
+        print(f"Downloading {img_url}")
+        urllib.request.urlretrieve(img_url, src_filename)
+        src_image = Image.open(src_filename)
+        if color == "red":
+            red_image = extract_red(src=src_image)
+            red_image.save(str(filepath))
+        elif color == "black":
+            black_image = extract_black_and_gray(src=src_image)
+            black_image.save(str(filepath))
+
+    return str(filepath)
+
+
+def weather_report(weather_forcast: weather.WeatherForToday, color: str):
     hours_template = Template(
         """
         <li>
         <ul>
-            <li class="hour">$hour_modified</li>
-            <li class="temp">$feels_like_rounded&deg;C</li>
-            <li class="icon"><img src="$icon_url"/></li>
-            <li class="type">$hour_desc</li>
-            <li class="status">$detailed_status</li>
+            <li class="black hour">$hour_modified</li>
+            <li class="black temp">$feels_like_rounded&deg;C</li>
+            <li class="$color icon"><img src="$icon_url_modified"/></li>
+            <li class="black type">$hour_desc</li>
+            <li class="black status">$detailed_status</li>
         </ul>
         </li>"""
     )
@@ -100,7 +198,11 @@ def weather_report(weather_forcast: weather.WeatherForToday):
         hours_str += hours_template.substitute(
             **hour.__dict__,
             hour_modified=hour_modified,
+            icon_url_modified=image_extract_color_channel(
+                img_url=hour.icon_url, color=color
+            ),
             feels_like_rounded=round(hour.feels_like),
+            color=color,
         )
 
     return f"""
@@ -124,7 +226,7 @@ def render_html_template(
     zmanim_dict = {**zmanim_dict, **{k: v for k, v in zmanim.times.items()}}
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
-        "weather_report": weather_report(weather_forcast=weather_forecast),
+        "weather_report": weather_report(weather_forcast=weather_forecast, color=color),
     }
     page_dict = {
         "day_of_week": date.today().strftime("%A"),
@@ -190,7 +292,8 @@ async def read_item(color: str):
 
     color = untaint_filename(color)
     # always render "joined", since it's for dev work
-    if color == "joined":
+    # TODO: Remove "True or"
+    if True or color == "joined":
         render(color=color)
     image_path = get_filename(color=color)
     if not image_path.exists():
@@ -200,3 +303,15 @@ async def read_item(color: str):
             "Did you render it first?",
         )
     return str(image_path)
+
+
+@app.get("/image-cache/{filename}", response_class=FileResponse)
+async def read_image_from_cache(filename: str):
+    file = Path(f"/image-cache/{filename}")
+    if file.exists():
+        return str(file)
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="The requested image could not be found.",
+        )
