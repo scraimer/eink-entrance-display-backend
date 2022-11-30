@@ -140,7 +140,7 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
                 grayscale_data.append(255)
             else:
                 dither_counter += 1
-                if dither_counter % 2 == 0:
+                if dither_counter % 3 == 0:
                     grayscale_data.append(0)
                 else:
                     grayscale_data.append(255)
@@ -171,6 +171,8 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
         elif color == "black":
             black_image = extract_black_and_gray(src=src_image)
             black_image.save(str(filepath))
+    else:
+        print(f"Using {str(filepath)} from cache")
 
     return str(filepath)
 
