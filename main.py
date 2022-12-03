@@ -1,3 +1,4 @@
+import my_calendar
 import datetime
 import shutil
 from string import Template
@@ -219,6 +220,7 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
 def render_html_template(
     zmanim: Optional[shul_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
+    calendar_content: str,
     color: str,
 ):
     heb_date = dates.HebrewDate.today()
@@ -236,7 +238,8 @@ def render_html_template(
         "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
     }
-    all_values = {**zmanim_dict, **page_dict, **weather_dict}
+    calendar_dict = {"calendar_content": calendar_content}
+    all_values = {**zmanim_dict, **page_dict, **weather_dict, **calendar_dict}
 
     TEMPLATE_FILENAME = "/app/layout-test-src.html"
     template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
@@ -273,11 +276,18 @@ def get_filename(color: str) -> Path:
 def render(color: str):
     zmanim = shul_zmanim.collect_data()
     weather_forecast = weather.collect_data()
+    calendar_content = my_calendar.collect_data()
     color = untaint_filename(color)
-    render_html_template(zmanim=zmanim, weather_forecast=weather_forecast, color=color)
+    render_html_template(
+        zmanim=zmanim,
+        weather_forecast=weather_forecast,
+        calendar_content=calendar_content,
+        color=color,
+    )
 
     filename = get_filename(color=color)
-    # TODO: Verify that the image is 528x880
+    # TODO: Verify that the image is 528x880.
+    #       If not, make it that size, and send an alert to Shalom
 
 
 @app.get("/render/{color}")
@@ -294,8 +304,7 @@ async def read_item(color: str):
 
     color = untaint_filename(color)
     # always render "joined", since it's for dev work
-    # TODO: Remove "True or"
-    if True or color == "joined":
+    if color == "joined":
         render(color=color)
     image_path = get_filename(color=color)
     if not image_path.exists():
