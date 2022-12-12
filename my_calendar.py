@@ -37,11 +37,6 @@ TOKEN_FILE_PATH = "token.json"
 sharable_url = "https://calendar.google.com/calendar/u/0?cid=OGI3MWQ0MmY5MDZmMjU5ZjM3Y2Q0YTJlYmU4N2RkYTk1ZWYwMmE4ZmQ2MjYxZGY1NzAxNjQzNTM1YTZkZDVmZEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t"
 
 # XXX
-# Pass this key with
-
-APK_KEY = "AIzaSyCfaptvOYXlddH__RcKJkR0PYs9dYIDibw"
-
-# XXX
 CALENDAR_ID = "8b71d42f906f259f37cd4a2ebe87dda95ef02a8fd6261df5701643535a6dd5fd@group.calendar.google.com"
 
 INDENT = "    "
