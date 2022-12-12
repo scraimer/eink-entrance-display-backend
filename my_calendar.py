@@ -166,9 +166,18 @@ def render(events: List[Dict[str, Any]]):
     return calender_str
 
 
+EMPTY_CALENDER = "-no calendar data-"
+CALENDER_ERROR = "-error getting calendar data-"
+
+
 def collect_data():
-    creds = auth_or_get_creds()
-    events = get_next_10_events(creds=creds)
+    try:
+        creds = auth_or_get_creds()
+        events = get_next_10_events(creds=creds)
+    except Exception:
+        # TODO: Print the exception, or send Shalom a notice
+        # (but only if a notice hasn't been sent in the pas day)
+        return CALENDER_ERROR
     if not events:
-        return "-no calendar data-"
+        return EMPTY_CALENDER
     return render(events=events)
