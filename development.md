@@ -32,24 +32,26 @@ Dockerfile, and in a downloadable package that's easy to install.
 
    * Idea #2: Split the image into sub-images. Have each sub-image copied to different x,y origins to make a single large image. (Might have to also support relative position, depending on size of other sub-images)
 
-* Move to async data collection, rendering and display:
+* ~~Move to async data collection, rendering and display:~~
 
-    * Have one "thread" (or process) that collects the data into a DB
+    * ~~Have one "thread" (or process) that collects the data into a DB~~
 
-    * Have the server render the data into a display image (red and black, for eink)
+    * ~~Have the server render the data into a display image (red and black, for eink)~~
 
-    * On eInk RPi continue with the same client
+    * ~~On eInk RPi continue with the same client~~
 
-* The zmanim data for Efrat is: https://www.efrat.muni.il/he/%D7%96%D7%9E%D7%A0%D7%99-%D7%9B%D7%A0%D7%99%D7%A1%D7%AA-%D7%94%D7%A9%D7%91%D7%AA/
+* ~~The zmanim data for Efrat is: https://www.efrat.muni.il/he/%D7%96%D7%9E%D7%A0%D7%99-%D7%9B%D7%A0%D7%99%D7%A1%D7%AA-%D7%94%D7%A9%D7%91%D7%AA/~~
 
-* better png icons: translate orange to red, and gray to 50% black
+* ~~better png icons: translate orange to red, and gray to 50% black~~
 
-* Show events from a Google calendar
+* ~~Show events from a Google calendar~~
 
-* Smaller date, remove padding
+* ~~Smaller date, remove padding~~
 
 * Verify that PNG is the right size; force it to the right size by cutting it
   down to size.
+
+* Hide Shabbat times entirely on Sun-Wed. On Thr, only show Shabbat entry time.
 
 ## Notes
 
