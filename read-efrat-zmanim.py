@@ -38,6 +38,39 @@ def text_date_in_heb_to_date(src: str):
     return datetime.date(year=year, month=month, day=day)
 
 
+def pick_column(tds: List[str]):
+    # Special case: index 2 is empty, and the number of items is 14, then
+    # shrink it to 13.
+    if len(tds) == 14 and not tds[2]:
+        del tds[2]
+
+    gregorian_date_in_heb = tds[0]
+    row_date = text_date_in_heb_to_date(gregorian_date_in_heb)
+    row_data = {
+        "gregorian_date": row_date.isoformat(),
+        "name": tds[1],
+        "hebrew_date": tds[2],
+    }
+    # Maybe it's a candle-lighting day?
+    if len(tds) >= 4 and tds[3]:
+        row_data["candle_lighting"] = tds[3]
+
+    # Maybe it's a fast day?
+    if len(tds) >= 13 and tds[11] and tds[12]:
+        row_data["fast_start"] = tds[11]
+        row_data["fast_end"] = tds[12]
+
+    # Maybe it's a havdala day? (Think about 2nd day of Rosh Hashan)
+    elif len(tds) >= 11 and tds[10]:
+        # TODO: Only emit this if it's really a holiday.
+        #       Don't confuse it with a fast day.
+        row_data["tzet_shabat"] = tds[10]
+
+    row_data["all_fields"] = {f"f_{i:02}": x for i, x in enumerate(tds)}
+
+    return row_data
+
+
 def extract_zmanim(doc: bs4.BeautifulSoup):
     table = doc.find("table")
     header_row = table.find("tr")
@@ -47,20 +80,7 @@ def extract_zmanim(doc: bs4.BeautifulSoup):
         tds = [td.getText().strip() for td in row.find_all("td")]
         if len(tds) == 0:
             continue
-        gregorian_date_in_heb = tds[0]
-        row_date = text_date_in_heb_to_date(gregorian_date_in_heb)
-        row_data = {
-            "gregorian_date": row_date.isoformat(),
-            "name": tds[1],
-            "hebrew_date": tds[2],
-            "candle_lighting": tds[3],
-            "netz": tds[5],
-            "mincha_gedola": tds[6],
-            "shkia": tds[9],
-            "tzet_shabat": tds[10],
-            "fast_start": tds[11],
-            "fast_end": tds[12],
-        }
+        row_data = pick_column(tds)
         out_rows.append(row_data)
     return out_rows
 
@@ -70,7 +90,7 @@ def main():
         Path(SRC_FILENAME).read_text(encoding="utf-8"), features="html.parser"
     )
     out_rows = extract_zmanim(doc)
-    Path(OUT_FILE).write_text(data=json.dumps(out_rows), encoding="utf-8")
+    Path(OUT_FILE).write_text(data=json.dumps(out_rows, indent=4), encoding="utf-8")
 
 
 if __name__ == "__main__":
