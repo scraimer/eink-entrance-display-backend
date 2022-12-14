@@ -5,6 +5,11 @@ pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-
 
 Running:
 
+You need to create an API Key for this.
+Go to :
+
+https://console.cloud.google.com/apis/credentials/consent?project=entrace-display
+
 The first time you run this program, it will to OAuth, giving you a JSON file that
 must be provided to the Google API.
 But part of this auth during the first run of the program is a port that is opened
@@ -15,61 +20,24 @@ from the computer doing the auth, to the computer running the Google Cloud API.
 from __future__ import print_function
 
 import datetime
-import json
-import os.path
-import sys
 import textwrap
 from typing import Any, Dict, List, Optional
 
-from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from string import Template
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-
-TOKEN_FILE_PATH = "token.json"
-
-# XXX
-sharable_url = "https://calendar.google.com/calendar/u/0?cid=OGI3MWQ0MmY5MDZmMjU5ZjM3Y2Q0YTJlYmU4N2RkYTk1ZWYwMmE4ZmQ2MjYxZGY1NzAxNjQzNTM1YTZkZDVmZEBncm91cC5jYWxlbmRhci5nb29nbGUuY29t"
-
-# XXX
-CALENDAR_ID = "8b71d42f906f259f37cd4a2ebe87dda95ef02a8fd6261df5701643535a6dd5fd@group.calendar.google.com"
+import config
 
 INDENT = "    "
 
 
-def auth_or_get_creds() -> Credentials:
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists(TOKEN_FILE_PATH):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE_PATH, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            # Follow the instructions at
-            # https://developers.google.com/calendar/api/quickstart/python
-            # to create this file again.
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "config-google-calendar-credentials.json", SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(TOKEN_FILE_PATH, "w") as token:
-            token.write(creds.to_json())
-    return creds
-
-
-def get_next_10_events(creds: Credentials) -> Optional[List[Dict[str, Any]]]:
+def get_next_10_events() -> Optional[List[Dict[str, Any]]]:
     try:
-        service = build("calendar", "v3", credentials=creds)
+        service = build(
+            "calendar", "v3", developerKey=config.config.google_calendar.api_key
+        )
 
         # Call the Calendar API
         now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
@@ -79,7 +47,7 @@ def get_next_10_events(creds: Credentials) -> Optional[List[Dict[str, Any]]]:
         events_result = (
             service.events()
             .list(
-                calendarId=CALENDAR_ID,
+                calendarId=config.config.google_calendar.calendar_id,
                 timeMin=now,
                 timeMax=horizon,
                 maxResults=20,
@@ -167,8 +135,7 @@ CALENDER_ERROR = "-error getting calendar data-"
 
 def collect_data():
     try:
-        creds = auth_or_get_creds()
-        events = get_next_10_events(creds=creds)
+        events = get_next_10_events()
     except Exception:
         # TODO: Print the exception, or send Shalom a notice
         # (but only if a notice hasn't been sent in the pas day)
@@ -176,3 +143,8 @@ def collect_data():
     if not events:
         return EMPTY_CALENDER
     return render(events=events)
+
+
+if __name__ == "__main__":
+    events = get_next_10_events()
+    print(events)
