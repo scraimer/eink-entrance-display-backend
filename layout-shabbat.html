@@ -66,6 +66,15 @@
             font-size: 18px;
         }
 
+        #tset-big .title {
+            clear: both;
+        }
+
+        #tset-big .value {
+            font-size: 138px;
+            font-weight: bold;
+        }
+
         #weather-table {
             border: 1px solid black;
             width: 526px;
@@ -223,6 +232,8 @@
         .show-only-red .red {
             color: black !important;
         }
+
+        $additional_css
     </style>
 </head>
 <!-- Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
@@ -255,6 +266,10 @@
                 <td>$tzet_shabat</td>
             </tr>
         </table>
+    </div>
+    <div id="tset-big" dir="rtl">
+        <span class="title black">מוצאי שבת</span><br>
+        <span class="value red">$tzet_shabat</span>
     </div>
     <div class="zone">
         <span class="black">Outside temperature: </span>

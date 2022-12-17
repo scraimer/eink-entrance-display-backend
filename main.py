@@ -217,6 +217,14 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
     """
 
 
+def is_tset_soon(tset_shabat: datetime.datetime) -> bool:
+    if not tset_shabat:
+        return False
+    TSET_IS_SOON = datetime.timedelta(hours=2)
+    diff: datetime.timedelta = tset_shabat - datetime.datetime.now()
+    return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
+
+
 def render_html_template(
     zmanim: Optional[shul_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
@@ -225,25 +233,36 @@ def render_html_template(
 ):
     heb_date = dates.HebrewDate.today()
     zmanim_dict = {
-        "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True)
+        "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
+        **{k: v for k, v in zmanim.times.items()},
     }
-    zmanim_dict = {**zmanim_dict, **{k: v for k, v in zmanim.times.items()}}
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
         "weather_warning_icon": "",
         "weather_report": weather_report(weather_forcast=weather_forecast, color=color),
     }
-    if weather_forecast.current.feels_like <= 13:
+    JACKET_WEATHER_TEMPERATURE = 13
+    if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
         x = f"""
             <span id="current-weather-warning-icon">
                 <img src="/app/pic/jacket-black.png" class="black" />
             </span>"""
         weather_dict["weather_warning_icon"] = x
+    if is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None)):
+        additional_css = """
+            #shul { display: none; }
+            #test-big { display: block; }
+        """
+    else:
+        additional_css = """
+            #tset-big { display: none; }
+        """
     page_dict = {
         "day_of_week": date.today().strftime("%A"),
         "date": date.today().strftime("%-d of %B %Y"),
         "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
+        "additional_css": additional_css,
     }
     calendar_dict = {"calendar_content": calendar_content}
     all_values = {**zmanim_dict, **page_dict, **weather_dict, **calendar_dict}
