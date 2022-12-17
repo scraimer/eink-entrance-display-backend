@@ -248,7 +248,7 @@ def render_html_template(
     calendar_dict = {"calendar_content": calendar_content}
     all_values = {**zmanim_dict, **page_dict, **weather_dict, **calendar_dict}
 
-    TEMPLATE_FILENAME = "/app/layout-test-src.html"
+    TEMPLATE_FILENAME = "/app/layout-shabbat.html"
     template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
