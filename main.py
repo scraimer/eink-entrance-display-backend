@@ -230,8 +230,15 @@ def render_html_template(
     zmanim_dict = {**zmanim_dict, **{k: v for k, v in zmanim.times.items()}}
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
+        "weather_warning_icon": "",
         "weather_report": weather_report(weather_forcast=weather_forecast, color=color),
     }
+    if weather_forecast.current.feels_like <= 13:
+        x = f"""
+            <span id="current-weather-warning-icon">
+                <img src="/app/pic/jacket-black.png" class="black" />
+            </span>"""
+        weather_dict["weather_warning_icon"] = x
     page_dict = {
         "day_of_week": date.today().strftime("%A"),
         "date": date.today().strftime("%-d of %B %Y"),

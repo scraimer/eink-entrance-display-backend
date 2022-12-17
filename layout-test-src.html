@@ -144,6 +144,11 @@
             overflow: hidden;
         }
 
+        #current-weather-warning-icon img {
+            width: 40px;
+            height: auto;
+        }
+
         #calendar {
             width: 100%;
             height: 360px;
@@ -252,8 +257,9 @@
         </table>
     </div>
     <div class="zone">
-        <span class="black">Outside temperature: </span><span style="font-size: 2em"
-            class="red">$current_temp&deg;C</span>
+        <span class="black">Outside temperature: </span>
+        <span style="font-size: 2em" class="red">$current_temp&deg;C</span>
+        $weather_warning_icon
         <br />
         <span>
             $weather_report
