@@ -31,20 +31,23 @@ def kbalat_shabat_from_candle_lighting(candle_lighting: str) -> str:
     return f"{t2.hour}:{t2.minute:02}"
 
 
-def collect_data() -> ShabbatZmanim:
-    efrat_zmanim = json.loads(Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"))
+def collect_data(
+    now: datetime = datetime.now(),
+    db_json: str = Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"),
+) -> ShabbatZmanim:
+    efrat_zmanim = json.loads(db_json)
     HOW_MANY_DAYS_TO_LOOK_AHEAD = 8
     DAY = timedelta(days=1)
     day_zmanims: List[Dict[str, Union[str, datetime]]] = []
     for i in range(HOW_MANY_DAYS_TO_LOOK_AHEAD):
-        day = date.today() + (i * DAY)
+        day = now.date() + (i * DAY)
         if day.weekday() == 5:  # Saturday
             found = [z for z in find_zmanim_for_day(day, efrat_zmanim)]
             if found:
                 for z in found:
                     z["shabbat"] = True
                     z["datetime"] = datetime.combine(
-                        date=day, time=time(), tzinfo=datetime.now().tzinfo
+                        date=day, time=time(), tzinfo=now.tzinfo
                     )
                 day_zmanims += found
     if len(day_zmanims) > 0:
