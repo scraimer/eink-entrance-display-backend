@@ -225,6 +225,21 @@ def is_tset_soon(tset_shabat: datetime.datetime) -> bool:
     return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
 
 
+def omer_count(today: datetime.date):
+    today_heb = dates.HebrewDate.from_pydate(today)
+    OMER_ZERO = dates.HebrewDate(year=today_heb.year, month=1, day=15).to_pydate()
+    if today <= OMER_ZERO:
+        return None
+    delta = today - OMER_ZERO
+    MAX_OMER = 49
+    if delta.days <= 0 or delta.days > MAX_OMER:
+        return None
+    if delta.days > 7:
+        return f"בעומר {delta.days} = {delta.days // 7} * 7 + {delta.days % 7}"
+    else:
+        return f"בעומר {delta.days}"
+
+
 def render_html_template(
     zmanim: Optional[shul_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
@@ -232,6 +247,7 @@ def render_html_template(
     color: str,
 ):
     heb_date = dates.HebrewDate.today()
+    omer = omer_count(today=datetime.datetime.today().date())
     zmanim_dict = {
         "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
         **{k: v for k, v in zmanim.times.items()},
@@ -265,7 +281,17 @@ def render_html_template(
         "additional_css": additional_css,
     }
     calendar_dict = {"calendar_content": calendar_content}
-    all_values = {**zmanim_dict, **page_dict, **weather_dict, **calendar_dict}
+    omer_dict = {
+        "omer": f"{omer}",
+        "omer_display": "inline" if omer else "none",
+    }
+    all_values = {
+        **zmanim_dict,
+        **page_dict,
+        **weather_dict,
+        **calendar_dict,
+        **omer_dict,
+    }
 
     TEMPLATE_FILENAME = "/app/layout-shabbat.html"
     template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")

@@ -39,6 +39,11 @@
             font-size: 36px;
         }
 
+        h2 #omer {
+            float: left;
+            margin-left: 15px;
+        }
+
         #footer {
             font-size: 10px;
             display: block;
@@ -245,7 +250,9 @@
         <div id="title-hebrew-date">$heb_date</div>
     </h1>
     <div class="zone" id="shul" dir="rtl">
-        <h2 class="red">$parasha</h2>
+        <h2 class="red">$parasha
+            <div id="omer" style="display: $omer_display;">$omer</div>
+        </h2>
         <table dir="rtl" class="black">
             <tr>
                 <td>הדלקת נרות</td>
