@@ -235,9 +235,9 @@ def omer_count(today: datetime.date):
     if delta.days <= 0 or delta.days > MAX_OMER:
         return None
     if delta.days > 7:
-        return f"בעומר {delta.days} = {delta.days // 7} * 7 + {delta.days % 7}"
+        return f"{delta.days // 7} * 7 + {delta.days % 7} = {delta.days} בעומר "
     else:
-        return f"בעומר {delta.days}"
+        return f"{delta.days} בעומר"
 
 
 def render_html_template(
