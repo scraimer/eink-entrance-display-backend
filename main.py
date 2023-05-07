@@ -9,7 +9,7 @@ import os
 import re
 import weather
 import shul_zmanim
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from datetime import date
 from pyluach import dates, parshios
 import urllib
@@ -48,6 +48,38 @@ def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
     mono_image.save(dest)
 
 
+def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> None:
+    DEVICE_HEIGHT = 880
+    DEVICE_WIDTH = 528
+
+    image = Image.open(file_to_modify)
+    if image.width > DEVICE_WIDTH or image.height > DEVICE_HEIGHT:
+        text = "Image too large."
+        if image.width > DEVICE_WIDTH:
+            text += (
+                f" Width of image is {image.width}, exceeding max of {DEVICE_WIDTH}."
+            )
+        if image.height > DEVICE_HEIGHT:
+            text += (
+                f" Height of image is {image.height}, exceeding max of {DEVICE_HEIGHT}."
+            )
+        print(text)
+        font_size = 10
+        font = ImageFont.truetype(str(root_dir / "fonts/arial.ttf"), font_size)
+        draw = ImageDraw.Draw(image)
+        text_width, text_height = draw.textsize(text, font=font)
+        text_x = DEVICE_WIDTH - text_width
+        text_y = DEVICE_HEIGHT - text_height
+
+        text_fill = (0,0,0)
+        if color in ("red", "black"):
+            text_fill = 0
+        draw.text((text_x, text_y), text, font=font, fill=text_fill)
+        draw.text((text_x, text_y), text, font=font, fill=text_fill)
+        cropped_image = image.crop((0, 0, DEVICE_WIDTH, DEVICE_HEIGHT))
+        cropped_image.save(file_to_modify)
+
+
 def render_html_template_single_color(
     template_values: Dict, color: str, template: Template
 ) -> Path:
@@ -76,6 +108,7 @@ def render_html_template_single_color(
         convert_png_to_mono_png(src=out_firefox_filename, dest=out_path)
     else:
         shutil.copy(src=out_firefox_filename, dst=str(out_path))
+    clip_image_to_device_dimensions_in_place(file_to_modify=out_path, color=color)
     return out_path
 
 
