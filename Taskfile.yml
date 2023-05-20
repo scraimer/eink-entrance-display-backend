@@ -31,4 +31,5 @@ tasks:
   debug_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
-      - docker run --rm -it --publish 8321:8321 --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend:latest
+      #- docker run --rm -it --publish 8321:8321 --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend:latest
+      - docker run -it --restart unless-stopped --publish 8321:8321 --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend:latest
