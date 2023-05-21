@@ -225,7 +225,7 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
     hours_to_display = list(weather_forcast.hourlies.values())[0:4]
     for hour in hours_to_display:
         hour_modified = hour.hour[0:5] + (
-            '<span class="tomorrow">tomorrow</span>' if len(hour.hour) > 5 else ""
+            f'<span class="tomorrow">{hour.relative_day}</span>' if hour.relative_day else ""
         )
         hours_str += hours_template.substitute(
             **hour.__dict__,
@@ -242,6 +242,7 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
         <ul>
             {hours_str}
         </ul>
+        <span class="min_max_notes">{weather_forcast.min_max_soon}</span>
     </div>
     """
 
