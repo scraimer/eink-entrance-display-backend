@@ -3,7 +3,7 @@ import datetime
 import shutil
 from string import Template
 import subprocess
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Set
 from pathlib import Path
 import os
 import re
@@ -15,7 +15,7 @@ from pyluach import dates, parshios
 import urllib
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 root_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 out_dir = Path("/tmp/eink-display")
@@ -80,13 +80,9 @@ def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> 
         cropped_image.save(file_to_modify)
 
 
-def render_html_template_single_color(
-    template_values: Dict, color: str, template: Template
-) -> Path:
-    template_values["color"] = color
-    content = template.substitute(**template_values)
+def render_html_template_single_color(color: str, html_content: str) -> Path:
     content_filename = "/tmp/content.html"
-    Path(content_filename).write_text(data=content, encoding="utf-8")
+    Path(content_filename).write_text(data=html_content, encoding="utf-8")
     out_firefox_filename = f"/app/firefox-{color}.png"
     p = subprocess.run(
         [
@@ -273,12 +269,12 @@ def omer_count(today: datetime.date):
         return f"{delta.days} בעומר"
 
 
-def render_html_template(
+def collect_all_values_of_data(
     zmanim: Optional[shul_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
     color: str,
-):
+) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.today()
     omer = omer_count(today=datetime.datetime.today().date())
     zmanim_dict = {
@@ -325,13 +321,19 @@ def render_html_template(
         **calendar_dict,
         **omer_dict,
     }
+    return all_values
 
+
+def load_template_for_shabbat():
     TEMPLATE_FILENAME = "/app/layout-shabbat.html"
     template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
     template = Template(template_text)
+    return (template, template_required_keys)
 
+
+def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys: Set[Any]):
     dollar_keys = set([f"${x}" for x in all_values.keys()])
     missing_keys = template_required_keys - dollar_keys
     if missing_keys:
@@ -341,12 +343,26 @@ def render_html_template(
         )
         # raise KeyError("Required keys are missing:", missing_keys)
         # Fill in the missing keys, to avoid failing
-        for k in missing_keys:
-            all_values[k[1:]] = "[ERR]"
+    return missing_keys
 
-    render_html_template_single_color(
-        template_values=all_values, template=template, color=color
-    )
+
+def generate_html_content(color: str) -> str:
+    (zmanim, weather_forecast, calendar_content) = collect_data()
+    all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color)
+    (template, template_required_keys) = load_template_for_shabbat()
+    missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
+    # Fill in missing keys
+    for k in missing_keys:
+        all_values[k[1:]] = "[ERR]"
+    all_values["color"] = color
+    return template.substitute(**all_values)
+
+
+def render_html_template(
+    color: str,
+):
+    html_content = generate_html_content(color=color)
+    render_html_template_single_color(color=color, html_content=html_content)
 
 
 def get_filename(color: str) -> Path:
@@ -358,21 +374,21 @@ def get_filename(color: str) -> Path:
     return out_dir / (color + ".png")
 
 
-def render(color: str):
+def collect_data():
     zmanim = shul_zmanim.collect_data()
     weather_forecast = weather.collect_data()
     calendar_content = my_calendar.collect_data()
-    color = untaint_filename(color)
-    render_html_template(
-        zmanim=zmanim,
-        weather_forecast=weather_forecast,
-        calendar_content=calendar_content,
-        color=color,
-    )
+    return (zmanim, weather_forecast, calendar_content)
 
+def render(color: str):
+    color = untaint_filename(color)
+    render_html_template(color=color)
     filename = get_filename(color=color)
-    # TODO: Verify that the image is 528x880.
-    #       If not, make it that size, and send an alert to Shalom
+
+
+@app.get("/html-dev/{color}", response_class=HTMLResponse)
+async def read_item(color: str):
+    return generate_html_content(color=color)
 
 
 @app.get("/render/{color}")
