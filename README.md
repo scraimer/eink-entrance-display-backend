@@ -1,11 +1,13 @@
 ## Installation and Run
 
-Create a file named `appsecrets.py` that looks something like this
+Create a file named `.secrets` that looks something like this
 
-    # This is a file of secrets that won't be committed
-    weather_api_key:str = "12345_your_api_key_67890"
+    # Do not commit this file! It has private data!
+    SECRETS_OPENWEATHERMAP_API_KEY=12345_your_api_key_67890
+    SECRETS_GOOGLE_CALENDAR_API_KEY=213131231_your_api_key
+    SECRETS_GOOGLE_CALENDAR_CALENDAR_ID=123456789@group.calendar.google.com
 
-After the `appsecrets.py` has been placed in the same directory as `main.py`,
+After the `.secrets` has been placed in the same directory as `main.py`,
 you can launch the daemon.
 
     go install github.com/go-task/task/v3/cmd/task@latest

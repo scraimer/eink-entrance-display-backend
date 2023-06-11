@@ -6,9 +6,8 @@ future-dev-ideas/minimal-red-3-palette-example-by-casei-solus.png
 .vscode/settings.json
 out.png
 firefox-*.png
-appsecrets.py
 wip
 content.html
-config-private-data.json
 .pytest_cache
 tmp
+.secrets

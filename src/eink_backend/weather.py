@@ -4,7 +4,6 @@ from typing import Dict, List, Optional
 from datetime import datetime, time, timedelta
 from pyowm.owm import OWM
 
-from . import appsecrets
 from .config import config
 
 
@@ -34,12 +33,12 @@ class TemperatureAtTime:
 
 def collect_data() -> WeatherForToday:
     # Setup: The API key you got from the OpenWeatherMap website, save it
-    #        as `weather_api_key` in the file `appsecrets.py`
+    #        as `SECRETS_OPENWEATHERMAP_API_KEY` in the file `.secrets`
     #
     # The code below is based on
     # https://pyowm.readthedocs.io/en/latest/v3/code-recipes.html#weather_forecasts
     #
-    api_key = appsecrets.weather_api_key
+    api_key = config.openweathermap_api_key
     owm = OWM(api_key)
     mgr = owm.weather_manager()
     owm_forecast = mgr.one_call(lat=config.efrat.lat, lon=config.efrat.lon)

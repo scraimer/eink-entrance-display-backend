@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-import json
+import os
 from pathlib import Path
-
+from dotenv import load_dotenv
 
 @dataclass
 class GeoLocation:
@@ -21,15 +21,19 @@ class GoogleCalendar:
 class Config:
     efrat: GeoLocation
     google_calendar: GoogleCalendar
+    openweathermap_api_key: str
 
 
-private_config_path = Path(__file__).parent / "config-private-data.json"
-private_config_json = json.loads(private_config_path.read_text(encoding="utf-8"))
+secrets_file_path = Path(__file__).parent.parent.parent / ".secrets"
+load_result = load_dotenv(secrets_file_path)
+if not load_result:
+    raise FileNotFoundError(f"Could not read {str(secrets_file_path)}")
 
 config = Config(
     efrat=GeoLocation(lat=31.392880, lon=35.091116),
     google_calendar=GoogleCalendar(
-        api_key=private_config_json["google_calendar"]["api_key"],
-        calendar_id=private_config_json["google_calendar"]["calendar_id"],
+        api_key=os.getenv("SECRETS_GOOGLE_CALENDAR_API_KEY"),
+        calendar_id=os.getenv("SECRETS_GOOGLE_CALENDAR_CALENDAR_ID"),
     ),
+    openweathermap_api_key=os.getenv("SECRETS_OPENWEATHERMAP_API_KEY"),
 )
