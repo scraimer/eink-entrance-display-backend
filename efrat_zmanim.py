@@ -11,7 +11,7 @@ class ShabbatZmanim:
     times: Dict[str, Union[str, datetime]]
 
 
-ZMANIM_DB_SRC = "efrat_zmanim.json"
+ZMANIM_DB_SRC = "assets/efrat_zmanim.json"
 
 
 def find_zmanim_for_day(day: date, efrat_zmanim: Dict[str, Union[str, int]]):

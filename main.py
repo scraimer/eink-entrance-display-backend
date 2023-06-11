@@ -8,7 +8,7 @@ from pathlib import Path
 import os
 import re
 import weather
-import shul_zmanim
+import efrat_zmanim
 from PIL import Image, ImageDraw, ImageFont
 from datetime import date
 from pyluach import dates, parshios
@@ -65,7 +65,7 @@ def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> 
             )
         print(text)
         font_size = 10
-        font = ImageFont.truetype(str(root_dir / "fonts/arial.ttf"), font_size)
+        font = ImageFont.truetype(str(root_dir / "assets/fonts/arial.ttf"), font_size)
         draw = ImageDraw.Draw(image)
         text_width, text_height = draw.textsize(text, font=font)
         text_x = DEVICE_WIDTH - text_width
@@ -83,7 +83,7 @@ def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> 
 def render_html_template_single_color(color: str, html_content: str) -> Path:
     content_filename = "/tmp/content.html"
     Path(content_filename).write_text(data=html_content, encoding="utf-8")
-    out_firefox_filename = f"/app/firefox-{color}.png"
+    out_firefox_filename = f"/app/tmp/firefox-{color}.png"
     p = subprocess.run(
         [
             "firefox",
@@ -271,7 +271,7 @@ def omer_count(today: datetime.date):
 
 
 def collect_all_values_of_data(
-    zmanim: Optional[shul_zmanim.ShabbatZmanim],
+    zmanim: Optional[efrat_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
     color: str,
@@ -291,7 +291,7 @@ def collect_all_values_of_data(
     if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
         x = f"""
             <span id="current-weather-warning-icon">
-                <img src="/app/pic/jacket-black.png" class="black" />
+                <img src="/app/assets/pic/jacket-black.png" class="black" />
             </span>"""
         weather_dict["weather_warning_icon"] = x
     if is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None)):
@@ -326,7 +326,7 @@ def collect_all_values_of_data(
 
 
 def load_template_for_shabbat():
-    TEMPLATE_FILENAME = "/app/layout-shabbat.html"
+    TEMPLATE_FILENAME = "/app/assets/layout-shabbat.html"
     template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
@@ -376,7 +376,7 @@ def get_filename(color: str) -> Path:
 
 
 def collect_data():
-    zmanim = shul_zmanim.collect_data()
+    zmanim = efrat_zmanim.collect_data()
     weather_forecast = weather.collect_data()
     calendar_content = my_calendar.collect_data()
     return (zmanim, weather_forecast, calendar_content)

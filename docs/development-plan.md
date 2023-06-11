@@ -1,13 +1,3 @@
-## Design
-
-1. On one hand, have in `hinge-iot` an API that does all the heavy lifting
-   and generates red and black images.
-
-2. On the eink RPi, download the red and black images and display them.
-
-I'd like to have each of them nicely packaged - in a docker image made from a
-Dockerfile, and in a downloadable package that's easy to install.
-
 ## Plan
 
 * ~~Create a git repo for this named something like `eink-entrance-display-backend`~~
@@ -26,7 +16,7 @@ Dockerfile, and in a downloadable package that's easy to install.
 
          docker build --tag eink-entrance-display-backend:test-with-firefox --rm=false docker-containers/base/
 
-         docker run --rm --mount type=bind,source=$PWD,target=/src eink-entrance-display-backend:test-with-firefox bash -c "firefox --screenshot /src/out.png \"--window-size=528\" file:///src/layout-shabbat.html ; chmod 666 /src/out.png"
+         docker run --rm --mount type=bind,source=$PWD,target=/src eink-entrance-display-backend:test-with-firefox bash -c "firefox --screenshot /src/out.png \"--window-size=528\" file:///src/assets/layout-shabbat.html ; chmod 666 /src/out.png"
 
    TODO: Build a template to fill with data: shul, weather, smarthome updates (why is AC on, when will it next turn on during shabbat/chag, other changes, report open windows according to temperature sensors, display house diagram, etc)
 
@@ -52,9 +42,3 @@ Dockerfile, and in a downloadable package that's easy to install.
   down to size.
 
 * Hide Shabbat times entirely on Sun-Wed. On Thr, only show Shabbat entry time.
-
-## Notes
-
-* To get the rendered html from the container do this:
-
-   docker cp $(docker ps -q --filter "ancestor=eink-entrance-display-backend"):/tmp/content.html .

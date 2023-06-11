@@ -1,7 +1,7 @@
 from datetime import datetime
 import textwrap
 from pytest import TempdirFactory
-import shul_zmanim
+import efrat_zmanim
 
 
 def test_find_shabbat_from_weekday():
@@ -100,7 +100,7 @@ def test_find_shabbat_from_weekday():
     )
 
     # Check the chol-hamoed shabbat in pesach
-    z1 = shul_zmanim.collect_data(now=datetime(year=2023, month=4, day=7), db_json=json)
+    z1 = efrat_zmanim.collect_data(now=datetime(year=2023, month=4, day=7), db_json=json)
     assert (
         z1.name
         == "\u05e9\u05d1\u05ea \u05d7\u05d5\u05dc \u05d4\u05de\u05d5\u05e2\u05d3"
@@ -109,11 +109,12 @@ def test_find_shabbat_from_weekday():
     assert z1.times["tzet_shabat"] == "19:39"
 
     # TODO: This doesn't work as of this writing.
-    # Check the first Yom Tov of Pesach
-    # z2 = shul_zmanim.collect_data(now=datetime(year=2023, month=4, day=5), db_json=json)
-    # assert z2.name == "\u05e4\u05e1\u05d7"
-    # assert z2.times["candle_lighting"] == "18:43"
-    # assert z2.times["tzet_shabat"] == "19:39"
+    if False:
+        # Check the first Yom Tov of Pesach
+        z2 = efrat_zmanim.collect_data(now=datetime(year=2023, month=4, day=5), db_json=json)
+        assert z2.name == "\u05e4\u05e1\u05d7"
+        assert z2.times["candle_lighting"] == "18:43"
+        assert z2.times["tzet_shabat"] == "19:39"
 
 
 if __name__ == "__main__":
