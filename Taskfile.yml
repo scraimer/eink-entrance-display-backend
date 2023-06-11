@@ -26,7 +26,7 @@ tasks:
   debug_run:
     desc: Run the server outside the server, for debugging
     cmds:
-      - /home/pi/.local/bin/uvicorn eink_backend.main:app --reload --host 0.0.0.0 --port {{.PROD_PORT}}
+      - /home/pi/.local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.PROD_PORT}}
 
   debug_build_docker:
     desc: Build the docker, while preserving intermediate layers
@@ -45,6 +45,13 @@ tasks:
       - task: build_base_docker_container
       - docker build --tag eink-entrance-display-backend-debug-dev:latest --rm=false deploy/docker-containers/debug-dev
       - docker run --rm -it --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend-debug-dev:latest
+
+  run_tests:
+    desc: Build debug docker and run the tests
+    cmds:
+      - task: debug_build_docker
+      - docker run --rm -it --mount type=bind,source="$(pwd)",target=/app --entrypoint "" {{.DEBUG_IMAGE}} bash -c "cd /app; pytest"
+
 
   default:
     cmds:
