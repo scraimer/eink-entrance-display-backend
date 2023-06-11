@@ -400,10 +400,6 @@ async def read_item(color: str):
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
-    static_file = Path("/app/static/static.png")
-    if static_file.exists():
-        return str(static_file)
-
     color = untaint_filename(color)
     # always render "joined", since it's for dev work
     if color == "joined":
