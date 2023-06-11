@@ -1,4 +1,3 @@
-import my_calendar
 import datetime
 import shutil
 from string import Template
@@ -7,8 +6,6 @@ from typing import Any, Dict, Optional, Set
 from pathlib import Path
 import os
 import re
-import weather
-import efrat_zmanim
 from PIL import Image, ImageDraw, ImageFont
 from datetime import date
 from pyluach import dates, parshios
@@ -17,7 +14,9 @@ import urllib
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
-root_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+from . import my_calendar, weather, efrat_zmanim
+
+root_dir = Path(os.path.dirname((os.path.dirname(os.path.abspath(__file__)))))
 out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 

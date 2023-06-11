@@ -11,3 +11,4 @@ wip
 content.html
 config-private-data.json
 .pytest_cache
+tmp

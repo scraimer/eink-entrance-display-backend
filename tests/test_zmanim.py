@@ -1,7 +1,7 @@
 from datetime import datetime
 import textwrap
 from pytest import TempdirFactory
-import efrat_zmanim
+from . import efrat_zmanim
 
 
 def test_find_shabbat_from_weekday():

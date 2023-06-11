@@ -4,8 +4,8 @@ from typing import Dict, List, Optional
 from datetime import datetime, time, timedelta
 from pyowm.owm import OWM
 
-import appsecrets
-from config import config
+from . import appsecrets
+from .config import config
 
 
 @dataclass

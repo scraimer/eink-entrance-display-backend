@@ -14,7 +14,7 @@
 
    * Idea #1: Create HTML files and use the firefox screenshot mechanism to store red and black versions (perhaps set red/black using CSS classes?)
 
-         docker build --tag eink-entrance-display-backend:test-with-firefox --rm=false docker-containers/base/
+         docker build --tag eink-entrance-display-backend:test-with-firefox --rm=false deploy/docker-containers/base/
 
          docker run --rm --mount type=bind,source=$PWD,target=/src eink-entrance-display-backend:test-with-firefox bash -c "firefox --screenshot /src/out.png \"--window-size=528\" file:///src/assets/layout-shabbat.html ; chmod 666 /src/out.png"
 

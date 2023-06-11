@@ -28,7 +28,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from string import Template
 
-import config
+from . import config
 
 INDENT = "    "
 

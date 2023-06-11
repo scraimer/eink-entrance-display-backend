@@ -4,18 +4,19 @@ vars:
   PROD_PORT: 8321
   DEV_PORT: 8322
   PROD_IMAGE: eink-entrance-display-backend:latest
+  DEBUG_IMAGE: eink-entrance-display-backend-debug:latest
 
 tasks:
   build_base_docker_container:
     internal: true
     cmds:
-      - docker build --tag eink-entrance-display-backend-base:latest docker-containers/base
+      - docker build --tag eink-entrance-display-backend-base:latest deploy/docker-containers/base
 
   build_docker:
     desc: Build the docker
     cmds:
       - task: build_base_docker_container
-      - docker build --tag {{.PROD_IMAGE}} docker-containers/prod
+      - docker build --tag {{.PROD_IMAGE}} deploy/docker-containers/prod
 
   run_docker_daemon:
     desc: Run the docker so it restarts on reboot
@@ -25,25 +26,24 @@ tasks:
   debug_run:
     desc: Run the server outside the server, for debugging
     cmds:
-      - /home/pi/.local/bin/uvicorn main:app --reload --host 0.0.0.0 --port {{.PROD_PORT}}
+      - /home/pi/.local/bin/uvicorn eink_backend.main:app --reload --host 0.0.0.0 --port {{.PROD_PORT}}
 
   debug_build_docker:
     desc: Build the docker, while preserving intermediate layers
     cmds:
       - task: build_base_docker_container
-      - docker build --tag {{.PROD_IMAGE}} --rm=false docker-containers/debug
+      - docker build --tag {{.DEBUG_IMAGE}} --rm=false deploy/docker-containers/debug
 
   debug_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
-      #- docker run --rm -it --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.PROD_IMAGE}}
-      - docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.PROD_IMAGE}}
+      - docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
   debug_dev_docker:
     desc: Build and run the development docker
     cmds:
       - task: build_base_docker_container
-      - docker build --tag eink-entrance-display-backend-debug-dev:latest --rm=false docker-containers/debug-dev
+      - docker build --tag eink-entrance-display-backend-debug-dev:latest --rm=false deploy/docker-containers/debug-dev
       - docker run --rm -it --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend-debug-dev:latest
 
   default:
