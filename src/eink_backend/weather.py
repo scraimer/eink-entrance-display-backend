@@ -31,7 +31,7 @@ class TemperatureAtTime:
     hour_str: str
     temperature: int
 
-def collect_data() -> WeatherForToday:
+def collect_data(now: datetime) -> WeatherForToday:
     # Setup: The API key you got from the OpenWeatherMap website, save it
     #        as `SECRETS_OPENWEATHERMAP_API_KEY` in the file `.secrets`
     #
@@ -43,7 +43,6 @@ def collect_data() -> WeatherForToday:
     mgr = owm.weather_manager()
     owm_forecast = mgr.one_call(lat=config.efrat.lat, lon=config.efrat.lon)
 
-    now = datetime.now()
     tomorrow = datetime.combine(now.date(), datetime.min.time()) + timedelta(days=1)
     next_day = datetime.combine(now.date(), datetime.min.time()) + timedelta(days=1)
     last_hour = datetime(year=now.year, month=now.month, day=now.day, hour=now.hour)

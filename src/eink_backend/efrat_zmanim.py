@@ -32,7 +32,7 @@ def kbalat_shabat_from_candle_lighting(candle_lighting: str) -> str:
 
 
 def find_nearest_shabbat_or_yom_tov(
-    now: datetime = datetime.now(),
+    now: datetime,
     db_json: str = Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"),
 ) -> ShabbatZmanim:
     efrat_zmanim = json.loads(db_json)
@@ -77,7 +77,7 @@ def find_nearest_shabbat_or_yom_tov(
 
 
 def collect_data(
-    now: datetime = datetime.now(),
+    now: datetime,
     db_json: str = Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"),
 ) -> ShabbatZmanim:
     return find_nearest_shabbat_or_yom_tov(now=now, db_json=db_json)

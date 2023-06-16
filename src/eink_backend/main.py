@@ -246,11 +246,11 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
     """
 
 
-def is_tset_soon(tset_shabat: datetime.datetime) -> bool:
+def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool:
     if not tset_shabat:
         return False
     TSET_IS_SOON = datetime.timedelta(hours=2)
-    diff: datetime.timedelta = tset_shabat - datetime.datetime.now()
+    diff: datetime.timedelta = tset_shabat - now
     return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
 
 
@@ -274,9 +274,10 @@ def collect_all_values_of_data(
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
     color: str,
+    now: datetime.datetime
 ) -> Dict[str, Any]:
-    heb_date = dates.HebrewDate.today()
-    omer = omer_count(today=datetime.datetime.today().date())
+    heb_date = dates.HebrewDate.from_pydate(now.date())
+    omer = omer_count(today=now.date())
     zmanim_dict = {
         "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
         **{k: v for k, v in zmanim.times.items()},
@@ -293,7 +294,7 @@ def collect_all_values_of_data(
                 <img src="/app/assets/pic/jacket-black.png" class="black" />
             </span>"""
         weather_dict["weather_warning_icon"] = x
-    if is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None)):
+    if is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
         additional_css = """
             #shul { display: none; }
             #test-big { display: block; }
@@ -303,9 +304,9 @@ def collect_all_values_of_data(
             #tset-big { display: none; }
         """
     page_dict = {
-        "day_of_week": date.today().strftime("%A"),
-        "date": date.today().strftime("%-d of %B %Y"),
-        "render_timestamp": datetime.datetime.now().strftime("%Y-%d-%m %H:%M:%S"),
+        "day_of_week": now.date().strftime("%A"),
+        "date": now.date().strftime("%-d of %B %Y"),
+        "render_timestamp": now.strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
         "additional_css": additional_css,
     }
@@ -346,9 +347,9 @@ def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys
     return missing_keys
 
 
-def generate_html_content(color: str) -> str:
-    (zmanim, weather_forecast, calendar_content) = collect_data()
-    all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color)
+def generate_html_content(color: str, now: datetime.datetime) -> str:
+    (zmanim, weather_forecast, calendar_content) = collect_data(now=now)
+    all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color, now=now)
     (template, template_required_keys) = load_template_for_shabbat()
     missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
     # Fill in missing keys
@@ -360,8 +361,9 @@ def generate_html_content(color: str) -> str:
 
 def render_html_template(
     color: str,
+    now: datetime.datetime
 ):
-    html_content = generate_html_content(color=color)
+    html_content = generate_html_content(color=color, now=now)
     render_html_template_single_color(color=color, html_content=html_content)
 
 
@@ -374,35 +376,37 @@ def get_filename(color: str) -> Path:
     return out_dir / (color + ".png")
 
 
-def collect_data():
-    zmanim = efrat_zmanim.collect_data()
-    weather_forecast = weather.collect_data()
+def collect_data(now: datetime.datetime):
+    zmanim = efrat_zmanim.collect_data(now=now)
+    weather_forecast = weather.collect_data(now=now)
     calendar_content = my_calendar.collect_data()
     return (zmanim, weather_forecast, calendar_content)
 
-def render(color: str):
+def render(color: str, now: datetime.datetime):
     color = untaint_filename(color)
-    render_html_template(color=color)
+    render_html_template(color=color, now=now)
     filename = get_filename(color=color)
 
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
 async def read_item(color: str):
-    return generate_html_content(color=color)
+    return generate_html_content(color=color, now=datetime.datetime.now())
 
 
 @app.get("/render/{color}")
 async def read_item(color: str):
-    render(color=color)
+    now = datetime.datetime.now()
+    render(color=color, now=now)
     return f"Rendered {color}. Waiting for download."
 
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def read_item(color: str):
     color = untaint_filename(color)
+    now = datetime.datetime.now()
     # always render "joined", since it's for dev work
     if color == "joined":
-        render(color=color)
+        render(color=color, now=now)
     image_path = get_filename(color=color)
     if not image_path.exists():
         raise HTTPException(
