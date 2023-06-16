@@ -16,7 +16,8 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from . import my_calendar, weather, efrat_zmanim
 
-root_dir = Path(os.path.dirname((os.path.dirname(os.path.abspath(__file__)))))
+root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
+"""This should point to the parent of the `src` directory"""
 out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
