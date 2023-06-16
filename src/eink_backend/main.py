@@ -401,9 +401,11 @@ async def read_item(color: str):
 
 
 @app.get("/eink/{color}", response_class=FileResponse)
-async def read_item(color: str):
+async def read_item(color: str, at: Optional[str] = None):
     color = untaint_filename(color)
     now = datetime.datetime.now()
+    if at:
+        now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
     # always render "joined", since it's for dev work
     if color == "joined":
         render(color=color, now=now)
