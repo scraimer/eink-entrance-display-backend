@@ -280,10 +280,18 @@ def collect_all_values_of_data(
 ) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.from_pydate(now.date())
     omer = omer_count(today=now.date())
-    zmanim_dict = {
-        "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
-        **{k: v for k, v in zmanim.times.items()},
-    }
+    try:
+        zmanim_dict = {
+            "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
+            **{k: v for k, v in zmanim.times.items()},
+        }
+    # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
+    except Exception as ex:
+        print("Warning: Could not collect zmanim data.")
+        # TODO: indent
+        traceback.print_exc()
+        zmanim_dict = {"Error": str(ex)}
+
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
         "weather_warning_icon": "",
@@ -296,7 +304,7 @@ def collect_all_values_of_data(
                 <img src="/app/assets/pic/jacket-black.png" class="black" />
             </span>"""
         weather_dict["weather_warning_icon"] = x
-    if is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
+    if zmanim and is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
         additional_css = """
             #shul { display: none; }
             #test-big { display: block; }
@@ -353,8 +361,10 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
     (zmanim, weather_forecast, calendar_content) = collect_data(now=now)
     try:
         all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color, now=now)
+    # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
     except Exception as ex:
         print("Warning: Could not collect all values of data.")
+        # TODO: indent
         traceback.print_exc()
         all_values = {"Error": str(ex)}
     (template, template_required_keys) = load_template_for_shabbat()
