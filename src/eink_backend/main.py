@@ -9,6 +9,7 @@ import re
 from PIL import Image, ImageDraw, ImageFont
 from datetime import date
 from pyluach import dates, parshios
+import traceback
 import urllib
 
 from fastapi import FastAPI, HTTPException
@@ -350,7 +351,12 @@ def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys
 
 def generate_html_content(color: str, now: datetime.datetime) -> str:
     (zmanim, weather_forecast, calendar_content) = collect_data(now=now)
-    all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color, now=now)
+    try:
+        all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color, now=now)
+    except Exception as ex:
+        print("Warning: Could not collect all values of data.")
+        traceback.print_exc()
+        all_values = {"Error": str(ex)}
     (template, template_required_keys) = load_template_for_shabbat()
     missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
     # Fill in missing keys
