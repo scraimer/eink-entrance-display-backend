@@ -1,0 +1,26 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/alpine
+{
+	"name": "Python3.7",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	//"image": "python:3.7-slim-buster",
+	"image": "eink-entrance-display-backend-base:latest",
+	"features": {
+		// "ghcr.io/devcontainers-contrib/features/apt-get-packages:1": {
+		// 	// libatomic1 - for vscode to run inside the docker
+		// 	// Make sure to install `gnome-keyring` on host, for vscode's Dev Container auth:
+		// 	//	$ sudo apt-get update && sudo apt-get install gnome-keyring -y
+		// 	//"packages": "libatomic1,gnome-keyring"
+		// }
+	}
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Use 'postCreateCommand' to run commands after the container is created.
+	//"postCreateCommand": "apt-get install -y libatomic1 gnome-keyring"
+	// Configure tool-specific properties.
+	// "customizations": {},
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
