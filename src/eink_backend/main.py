@@ -281,8 +281,11 @@ def collect_all_values_of_data(
     heb_date = dates.HebrewDate.from_pydate(now.date())
     omer = omer_count(today=now.date())
     try:
+        parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
+        if not parasha and zmanim and zmanim.name:
+            parasha = zmanim.name
         zmanim_dict = {
-            "parasha": parshios.getparsha_string(heb_date, israel=True, hebrew=True),
+            "parasha": parasha,
             **{k: v for k, v in zmanim.times.items()},
         }
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
