@@ -13,6 +13,11 @@ you can launch the daemon.
     go install github.com/go-task/task/v3/cmd/task@latest
     ~/go/bin/task build_docker
     ~/go/bin/task run_docker_daemon
+    
+### Google Credentials
+
+Read the instruction in `chores.py` to see how to get the Application to have access.
+
 ## Developement Mode
 
 ### Outside a container

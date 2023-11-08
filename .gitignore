@@ -11,3 +11,4 @@ content.html
 .pytest_cache
 tmp
 .secrets
+google-sheets-bot-auth.json
