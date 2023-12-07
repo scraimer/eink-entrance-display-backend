@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "env": {
+                "PYTHONPATH": "${relativeFile}"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: chores.py as module",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "module": "eink_backend.chores",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Current File as module",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src",
+            "module": "eink_backend.${fileBasenameNoExtension}",
+            "console": "integratedTerminal"
+        }
+    ]
+}

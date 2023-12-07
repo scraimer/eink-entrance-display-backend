@@ -17,3 +17,8 @@ See `development-plan.md`
 * To get the rendered html from the container do this:
 
    docker cp $(docker ps -q --filter "ancestor=eink-entrance-display-backend"):/tmp/content.html .
+
+### Running a single pythong file's `__main__` a module
+
+   cd src
+   python3 -m eink_backend.chores
