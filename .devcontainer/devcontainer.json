@@ -1,0 +1,39 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
+{
+	"name": "Anaconda (Python 3)",
+	"build": {
+		"context": "..",
+		"dockerfile": "Dockerfile"
+	},
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [
+		8321
+	],
+	// Configure tool-specific properties.
+	// "customizations": {},
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// Make the timezone Israel
+	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime",
+	"containerEnv": {
+		"TZ": "Israel",
+		"MY_CONTAINER_VAR2": "${localEnv:SOME_LOCAL_VAR}"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-azuretools.vscode-docker",
+				"github.copilot",
+				"ms-python.vscode-pylance",
+				"ms-python.black-formatter",
+				"ms-python.isort"
+			]
+		}
+	},
+	// Use priviliged to make the clock work
+	"privileged": true
+}
