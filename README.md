@@ -44,3 +44,17 @@ You'll have to press CTRL-C and restart the container to load changes.
     ~/go/bin/task debug_run_docker
 
 For the plan, see `development.md`
+
+### In the devcontainer
+
+VSCode supports the devcontainer, which has been configured for running on ARMv7l
+(which is what I have this installed on at home, a Raspberry Pi 4. Migrating to
+`aarch64` would be nice, but would take a lot of work.)
+
+To run the server:
+
+    cd $SOURCE_ROOT
+    uvicorn src.eink_backend.main:app --host 0.0.0.0 --port 8321
+
+And then open this link in your browser: http://localhost:8321
+(This works since that port is fowarded by VSCode)
