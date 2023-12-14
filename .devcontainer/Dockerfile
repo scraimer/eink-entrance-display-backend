@@ -26,9 +26,12 @@ ENV TZ="Israel"
 RUN pip3 install zmanim
 RUN pip3 install pyowm
 RUN pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+RUN pip3 install pygsheets
 
 # From this point onward are the things added for the devcontainer
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git
+
+# TODO: Move this up to be with the rest of the pip3

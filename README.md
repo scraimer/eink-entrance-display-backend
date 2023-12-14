@@ -54,7 +54,7 @@ VSCode supports the devcontainer, which has been configured for running on ARMv7
 To run the server:
 
     cd $SOURCE_ROOT
-    uvicorn src.eink_backend.main:app --host 0.0.0.0 --port 8321
+    uvicorn src.eink_backend.main:app --host 0.0.0.0 --port 8323 --reload
 
-And then open this link in your browser: http://localhost:8321
+And then open this link in your browser: http://localhost:8323
 (This works since that port is fowarded by VSCode)

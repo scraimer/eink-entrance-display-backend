@@ -25,3 +25,4 @@ ENV TZ="Israel"
 RUN pip3 install zmanim
 RUN pip3 install pyowm
 RUN pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+RUN pip3 install pygsheets

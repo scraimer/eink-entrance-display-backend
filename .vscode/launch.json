@@ -2,6 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Backend Server",
+            "type": "f5anything",
+            "request": "launch",
+            "command": "uvicorn src.eink_backend.main:app --host 0.0.0.0 --port 8323 --reload"
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

@@ -10,7 +10,13 @@
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
-		8321
+		8323
+	],
+	"mounts": [
+		// Mount ~/.ssh in the container for the SSH keys
+		"source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached",
+		// Mount the workspace as `/app`, just like we do in the deployment app
+		"source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached"
 	],
 	// Configure tool-specific properties.
 	// "customizations": {},
@@ -30,7 +36,8 @@
 				"github.copilot",
 				"ms-python.vscode-pylance",
 				"ms-python.black-formatter",
-				"ms-python.isort"
+				"ms-python.isort",
+				"discretegames.f5anything"
 			]
 		}
 	},

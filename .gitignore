@@ -1,4 +1,5 @@
 *.swp
+*.pyc
 __pycache__/
 joined.png
 future-dev-ideas/image_cache.py
@@ -12,3 +13,4 @@ content.html
 tmp
 .secrets
 google-sheets-bot-auth.json
+

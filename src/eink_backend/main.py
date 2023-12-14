@@ -1,8 +1,9 @@
+from dataclasses import dataclass
 import datetime
 import shutil
 from string import Template
 import subprocess
-from typing import Any, Dict, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from pathlib import Path
 import os
 import re
@@ -15,7 +16,11 @@ import urllib
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
-from . import my_calendar, weather, efrat_zmanim
+from . import my_calendar, weather, efrat_zmanim, chores
+
+FRIDAY = 4
+SATURDAY = 5
+
 
 root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 """This should point to the parent of the `src` directory"""
@@ -275,6 +280,7 @@ def collect_all_values_of_data(
     zmanim: Optional[efrat_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
+    chores_content: str,
     color: str,
     now: datetime.datetime
 ) -> Dict[str, Any]:
@@ -324,6 +330,7 @@ def collect_all_values_of_data(
         "additional_css": additional_css,
     }
     calendar_dict = {"calendar_content": calendar_content}
+    chores_dict = {"chores_content": chores_content}
     omer_dict = {
         "omer": f"{omer}",
         "omer_display": "inline" if omer else "none",
@@ -333,18 +340,29 @@ def collect_all_values_of_data(
         **page_dict,
         **weather_dict,
         **calendar_dict,
+        **chores_dict,
         **omer_dict,
     }
     return all_values
 
 
-def load_template_for_shabbat():
-    TEMPLATE_FILENAME = "/app/assets/layout-shabbat.html"
-    template_text = Path(TEMPLATE_FILENAME).read_text(encoding="utf-8")
+def load_template_from_file(file:Path) -> Tuple[Template, List[str]]:
+    template_text = file.read_text(encoding="utf-8")
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
     template = Template(template_text)
     return (template, template_required_keys)
+
+def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
+    wkday = now.weekday()
+    hour = now.hour
+
+    # Default template is shabbat
+    template_path = Path("/app/assets/layout-shabbat.html")
+    # Friday until 16:00, use the chore template
+    if wkday == FRIDAY and hour < 16:
+        template_path = Path("/app/assets/layout-choreday.html")
+    return load_template_from_file(file=template_path)
 
 
 def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys: Set[Any]):
@@ -361,16 +379,22 @@ def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys
 
 
 def generate_html_content(color: str, now: datetime.datetime) -> str:
-    (zmanim, weather_forecast, calendar_content) = collect_data(now=now)
+    collected = collect_data(now=now)
     try:
-        all_values = collect_all_values_of_data(zmanim=zmanim, weather_forecast=weather_forecast, calendar_content=calendar_content, color=color, now=now)
+        all_values = collect_all_values_of_data(
+            zmanim=collected.zmanim,
+            weather_forecast=collected.weather_forecast,
+            calendar_content=collected.calendar_content,
+            chores_content=collected.chores_content,
+            color=color,
+            now=now)
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
     except Exception as ex:
         print("Warning: Could not collect all values of data.")
-        # TODO: indent
+        # TODO: indent the exception under the warning
         traceback.print_exc()
         all_values = {"Error": str(ex)}
-    (template, template_required_keys) = load_template_for_shabbat()
+    (template, template_required_keys) = load_template_by_time(now=now)
     missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
     # Fill in missing keys
     for k in missing_keys:
@@ -396,11 +420,20 @@ def get_filename(color: str) -> Path:
     return out_dir / (color + ".png")
 
 
+@dataclass
+class PageData:
+    zmanim: Optional[efrat_zmanim.ShabbatZmanim]
+    weather_forecast: weather.WeatherForToday
+    calendar_content: str
+    chores_content: str
+
 def collect_data(now: datetime.datetime):
-    zmanim = efrat_zmanim.collect_data(now=now)
-    weather_forecast = weather.collect_data(now=now)
-    calendar_content = my_calendar.collect_data()
-    return (zmanim, weather_forecast, calendar_content)
+    return PageData(
+        zmanim=efrat_zmanim.collect_data(now=now),
+        weather_forecast=weather.collect_data(now=now),
+        calendar_content=my_calendar.collect_data(),
+        chores_content=chores.collect_data(now=now),
+    )
 
 def render(color: str, now: datetime.datetime):
     color = untaint_filename(color)

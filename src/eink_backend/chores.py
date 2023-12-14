@@ -79,6 +79,7 @@ class Chore:
     due: date
     name: str
     assignee: str
+    frequency_in_weeks: int
 
 
 def get_chores_from_spreadsheet() -> List[Chore]:
@@ -95,35 +96,45 @@ def get_chores_from_spreadsheet() -> List[Chore]:
             due=date.fromisoformat(src["Due Date"]),
             name=src["Name"],
             assignee=src["Assignee"],
+            frequency_in_weeks=src["Frequency in Weeks"],
         )
 
     records = worksheet.get_all_records()
     return [parse_record(r) for r in records]
 
 
-def render(chores: List[Chore]):
+def render(chores: List[Chore], now: datetime):
+    # Sort the chores:
+    # - assigned items are later
+    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
+    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
+
     chore_template = Template(
         textwrap.dedent(
             """\
-        <li class="chore">
+        <li class="chore$extra_classes">
             <ul>
-                <li class="black assignee">$assignee</li>
                 <li class="black name">$name</li>
+                <li class="black assignee">$assignee</li>
             </ul>
         </li>"""
         )
     )
 
-    TODAY = date.today()
+    today = now.date()
     chores_str = ""
     for chore in chores:
-        # breakpoint()
-        if chore.due > TODAY:
-            print("SKIPPING: " + str(chore))
+        if chore.due > today:
+            print("SKIPPING item in the future: " + str(chore))
             continue
+
+        extra_classes = ""
+        if chore.assignee:
+            extra_classes += " assigned"
         chore_out = {
             "assignee": chore.assignee,
             "name": chore.name,
+            "extra_classes": extra_classes,
         }
         chores_str += "\n" + textwrap.indent(
             chore_template.substitute(chore_out),
@@ -148,22 +159,25 @@ EMPTY_CHORES = "-no chores data-"
 SHEETS_ERROR = "-error getting chores from Google Sheets-"
 
 
-def collect_data() -> str:
+def collect_data(now: datetime) -> str:
     try:
         chores = get_chores_from_spreadsheet()
     except Exception as ex:
         print(f"Exception {ex} in get_chores_from_spreadsheet")
         traceback.print_exc()
-        # TODO: Shalom a notice
+        # TODO: text Shalom a notice
         # (but only if a notice hasn't been sent in the pas day)
         return SHEETS_ERROR
     if not chores:
-        return EMPTY_CHORES
+        return EMPTY_CHORES  
     print(chores)
-    rendered_out = render(chores=chores)
+    rendered_out = render(chores=chores, now=now)
     return rendered_out
 
 
 # python3 -m eink_backend.chores
 if __name__ == "__main__":
-    collect_data()
+    #out = collect_data(now=datetime.datetime(year=2023, month=12, day=15, hour=10, minute=00))
+    out = collect_data(now=datetime.datetime.now())
+    print(out)
+
