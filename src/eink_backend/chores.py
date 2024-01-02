@@ -71,8 +71,6 @@ from typing import Any, Dict, List, Optional
 
 from . import config
 
-INDENT = "    "
-
 
 @dataclass
 class Chore:
@@ -81,6 +79,11 @@ class Chore:
     assignee: str
     frequency_in_weeks: int
 
+
+@dataclass
+class ChoreData:
+    chores: List[Chore]
+    error: Optional[str] = None
 
 def get_chores_from_spreadsheet() -> List[Chore]:
     gc: pygsheets.client.Client = pygsheets.authorize(
@@ -103,63 +106,11 @@ def get_chores_from_spreadsheet() -> List[Chore]:
     return [parse_record(r) for r in records]
 
 
-def render(chores: List[Chore], now: datetime):
-    # Sort the chores:
-    # - assigned items are later
-    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
-    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
-
-    chore_template = Template(
-        textwrap.dedent(
-            """\
-        <li class="chore$extra_classes">
-            <ul>
-                <li class="black name">$name</li>
-                <li class="black assignee">$assignee</li>
-            </ul>
-        </li>"""
-        )
-    )
-
-    today = now.date()
-    chores_str = ""
-    for chore in chores:
-        if chore.due > today:
-            print("SKIPPING item in the future: " + str(chore))
-            continue
-
-        extra_classes = ""
-        if chore.assignee:
-            extra_classes += " assigned"
-        chore_out = {
-            "assignee": chore.assignee,
-            "name": chore.name,
-            "extra_classes": extra_classes,
-        }
-        chores_str += "\n" + textwrap.indent(
-            chore_template.substitute(chore_out),
-            prefix=INDENT,
-        )
-
-    outer_template = Template(
-        textwrap.dedent(
-            f"""\
-            <ul class="black chores">
-            $x
-            </ul>
-            """
-        )
-    )
-
-    out_str = outer_template.substitute(x=chores_str)
-    return out_str
-
-
 EMPTY_CHORES = "-no chores data-"
 SHEETS_ERROR = "-error getting chores from Google Sheets-"
 
 
-def collect_data(now: datetime) -> str:
+def collect_data(now: datetime) -> ChoreData:
     try:
         chores = get_chores_from_spreadsheet()
     except Exception as ex:
@@ -167,12 +118,11 @@ def collect_data(now: datetime) -> str:
         traceback.print_exc()
         # TODO: text Shalom a notice
         # (but only if a notice hasn't been sent in the pas day)
-        return SHEETS_ERROR
+        return ChoreData(chores=[], error=SHEETS_ERROR)
     if not chores:
-        return EMPTY_CHORES  
+        return ChoreData(chores=[], error=EMPTY_CHORES)
     print(chores)
-    rendered_out = render(chores=chores, now=now)
-    return rendered_out
+    return ChoreData(chores=chores)
 
 
 # python3 -m eink_backend.chores

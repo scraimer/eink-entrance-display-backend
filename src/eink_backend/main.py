@@ -3,6 +3,7 @@ import datetime
 import shutil
 from string import Template
 import subprocess
+import textwrap
 from typing import Any, Dict, List, Optional, Set, Tuple
 from pathlib import Path
 import os
@@ -21,6 +22,7 @@ from . import my_calendar, weather, efrat_zmanim, chores
 FRIDAY = 4
 SATURDAY = 5
 
+INDENT = "    "
 
 root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 """This should point to the parent of the `src` directory"""
@@ -187,26 +189,45 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
     grayscale.putalpha(alpha_img)
     return grayscale
 
+def should_download_to_cache(filepath: Path) -> bool:
+    if not filepath.exists():
+        return True
+    SEVEN_DAYS = datetime.timedelta(days=7)
+    file_datetime = datetime.datetime.fromtimestamp(filepath.stat().st_mtime)
+    file_too_old = ((file_datetime - datetime.datetime.now() ) >= SEVEN_DAYS)
+    return file_too_old
+
 
 def image_extract_color_channel(img_url: str, color: str) -> str:
-    if color == "joined":
-        return img_url
-
-    filename = image_single_color_channel_filename(img_url=img_url, color=color)
     EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
+    filename = image_single_color_channel_filename(img_url=img_url, color=color)
     filepath = EXTRACTED_CACHE / filename
-    if not filepath.exists():  # TODO: Make sure the file is no more than 7d old
-        url = urllib.parse.urlparse(img_url)
-        src_filename = f"/tmp/src.{Path(url.path).suffix}"
-        print(f"Downloading {img_url}")
-        urllib.request.urlretrieve(img_url, src_filename)
-        src_image = Image.open(src_filename)
-        if color == "red":
-            red_image = extract_red(src=src_image)
-            red_image.save(str(filepath))
-        elif color == "black":
-            black_image = extract_black_and_gray(src=src_image)
-            black_image.save(str(filepath))
+
+    if color == "joined":
+        if not img_url.startswith("file://"):
+            return img_url
+        srcpath = Path(img_url.replace("file://", ""))
+        x = srcpath.read_bytes()
+        filepath.write_bytes(x)
+        return str(filepath)
+
+    if should_download_to_cache(filepath):
+        try:
+            url = urllib.parse.urlparse(img_url)
+            src_filename = f"/tmp/src.{Path(url.path).suffix}"
+            print(f"Downloading {img_url}")
+            urllib.request.urlretrieve(img_url, src_filename)
+            src_image = Image.open(src_filename)
+            if color == "red":
+                red_image = extract_red(src=src_image)
+                red_image.save(str(filepath))
+            elif color == "black":
+                black_image = extract_black_and_gray(src=src_image)
+                black_image.save(str(filepath))
+        except Exception as ex:
+            print(f"Warning: Could not extract color channel from {img_url}")
+            print(textwrap.indent(traceback.format_exc(), prefix=INDENT))
+            return f"-EXCEPTION: {ex}-"
     else:
         print(f"Using {str(filepath)} from cache")
 
@@ -252,6 +273,84 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
     </div>
     """
 
+@dataclass
+class Assignee:
+    name: str
+    avatar: str
+
+def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
+    first_name = raw_assignee.split(" ")[0].lower()
+    TABLE = {
+        "shalom": Assignee(name="Shalom", avatar=None),
+        "ariel": Assignee(name="Ariel", avatar="ariel.png"),
+        "asaf": Assignee(name="Asaf", avatar="asaf.png"),
+        "amalya": Assignee(name="Amalya", avatar="amalya.png"),
+        "alon": Assignee(name="Alon", avatar="alon.png"),
+        "aviv": Assignee(name="Aviv", avatar="aviv.png"),
+    }
+    if first_name in TABLE:
+        return TABLE[first_name]
+    else:
+        return None
+
+def render_chores(chores: List[chores.Chore], now: datetime, color: str):
+    # Sort the chores:
+    # - assigned items are later
+    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
+    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
+
+    chore_template = Template(
+        textwrap.dedent(
+            """\
+        <li class="chore$extra_classes">
+            <ul>
+                <li class="avatar">$avatar_img</li>
+                <li class="black name">$name</li>
+                <li class="black assignee">$assignee</li>
+            </ul>
+        </li>"""
+        )
+    )
+
+    today = now.date()
+    chores_str = ""
+    for chore in chores:
+        if chore.due > today:
+            print("SKIPPING item in the future: " + str(chore))
+            continue
+
+        extra_classes = ""
+        avatar_img = ""
+        if chore.assignee:
+            assignee = normalize_assigneed(chore.assignee)
+            extra_classes += f" assigned"
+            if assignee.avatar:
+                avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
+                avatar_url = image_extract_color_channel(img_url=avatar_url, color=color)
+                avatar_img = f'<img src="{avatar_url}" />'
+        chore_out = {
+            "assignee": chore.assignee,
+            "name": chore.name,
+            "extra_classes": extra_classes,
+            "avatar_img": avatar_img,
+        }
+        chores_str += "\n" + textwrap.indent(
+            chore_template.substitute(chore_out),
+            prefix=INDENT,
+        )
+
+    outer_template = Template(
+        textwrap.dedent(
+            f"""\
+            <ul class="black chores">
+            $x
+            </ul>
+            """
+        )
+    )
+
+    out_str = outer_template.substitute(x=chores_str)
+    return out_str
 
 def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool:
     if not tset_shabat:
@@ -280,7 +379,7 @@ def collect_all_values_of_data(
     zmanim: Optional[efrat_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
-    chores_content: str,
+    chores_content: chores.ChoreData,
     color: str,
     now: datetime.datetime
 ) -> Dict[str, Any]:
@@ -330,7 +429,14 @@ def collect_all_values_of_data(
         "additional_css": additional_css,
     }
     calendar_dict = {"calendar_content": calendar_content}
-    chores_dict = {"chores_content": chores_content}
+
+    if chores_content.error:
+        chores_str = chores_content.error
+    else:
+        chores_str = render_chores(chores=chores_content.chores, now=now, color=color)
+    chores_dict = {
+        "chores_content": chores_str,
+    }
     omer_dict = {
         "omer": f"{omer}",
         "omer_display": "inline" if omer else "none",
@@ -425,7 +531,7 @@ class PageData:
     zmanim: Optional[efrat_zmanim.ShabbatZmanim]
     weather_forecast: weather.WeatherForToday
     calendar_content: str
-    chores_content: str
+    chores_content: chores.ChoreData
 
 def collect_data(now: datetime.datetime):
     return PageData(
