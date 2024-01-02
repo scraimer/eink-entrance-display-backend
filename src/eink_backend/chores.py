@@ -121,7 +121,6 @@ def collect_data(now: datetime) -> ChoreData:
         return ChoreData(chores=[], error=SHEETS_ERROR)
     if not chores:
         return ChoreData(chores=[], error=EMPTY_CHORES)
-    print(chores)
     return ChoreData(chores=chores)
 
 

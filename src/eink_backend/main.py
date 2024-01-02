@@ -316,7 +316,7 @@ def render_chores(chores: List[chores.Chore], now: datetime, color: str):
     chores_str = ""
     for chore in chores:
         if chore.due > today:
-            print("SKIPPING item in the future: " + str(chore))
+            # print("SKIPPING item in the future: " + str(chore))
             continue
 
         extra_classes = ""
