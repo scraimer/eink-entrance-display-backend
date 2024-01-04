@@ -548,19 +548,22 @@ def render(color: str, now: datetime.datetime):
 
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
-async def read_item(color: str):
-    return generate_html_content(color=color, now=datetime.datetime.now())
+async def html_dev(color: str, at: Optional[str] = None):
+    now = datetime.datetime.now()
+    if at:
+        now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
+    return generate_html_content(color=color, now=now)
 
 
 @app.get("/render/{color}")
-async def read_item(color: str):
+async def render(color: str):
     now = datetime.datetime.now()
     render(color=color, now=now)
     return f"Rendered {color}. Waiting for download."
 
 
 @app.get("/eink/{color}", response_class=FileResponse)
-async def read_item(color: str, at: Optional[str] = None):
+async def eink(color: str, at: Optional[str] = None):
     color = untaint_filename(color)
     now = datetime.datetime.now()
     if at:
