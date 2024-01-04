@@ -95,11 +95,18 @@ def get_chores_from_spreadsheet() -> List[Chore]:
     )
 
     def parse_record(src:Dict[str,Any]) -> Chore:
+        frequency_in_weeks = 1
+        try:
+            frequency_in_weeks = int(src["Frequency in Weeks"])
+        except ValueError:
+            print("Error parsing Frequency in Weeks from value "
+                  f"{src['Frequency in Weeks']} for chore {src['Name']}")
+
         return Chore(
             due=date.fromisoformat(src["Due Date"]),
             name=src["Name"],
             assignee=src["Assignee"],
-            frequency_in_weeks=src["Frequency in Weeks"],
+            frequency_in_weeks=frequency_in_weeks,
         )
 
     records = worksheet.get_all_records()
