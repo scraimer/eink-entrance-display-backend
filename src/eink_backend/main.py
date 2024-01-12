@@ -324,7 +324,7 @@ def render_chores(chores: List[chores.Chore], now: datetime, color: str):
         if chore.assignee:
             assignee = normalize_assigneed(chore.assignee)
             extra_classes += f" assigned"
-            if assignee.avatar:
+            if assignee and assignee.avatar:
                 avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
                 avatar_url = image_extract_color_channel(img_url=avatar_url, color=color)
                 avatar_img = f'<img src="{avatar_url}" />'
