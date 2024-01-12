@@ -342,7 +342,7 @@ def render_chores(chores: List[chores.Chore], now: datetime, color: str):
     outer_template = Template(
         textwrap.dedent(
             f"""\
-            <ul class="black chores">
+            <ul class="chores">
             $x
             </ul>
             """
