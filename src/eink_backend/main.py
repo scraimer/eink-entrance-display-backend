@@ -541,7 +541,7 @@ def collect_data(now: datetime.datetime):
         chores_content=chores.collect_data(now=now),
     )
 
-def render(color: str, now: datetime.datetime):
+def render_one_color(color: str, now: datetime.datetime):
     color = untaint_filename(color)
     render_html_template(color=color, now=now)
     filename = get_filename(color=color)
@@ -558,7 +558,7 @@ async def html_dev(color: str, at: Optional[str] = None):
 @app.get("/render/{color}")
 async def render(color: str):
     now = datetime.datetime.now()
-    render(color=color, now=now)
+    render_one_color(color=color, now=now)
     return f"Rendered {color}. Waiting for download."
 
 
@@ -570,7 +570,7 @@ async def eink(color: str, at: Optional[str] = None):
         now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
     # always render "joined", since it's for dev work
     if color == "joined":
-        render(color=color, now=now)
+        render_one_color(color=color, now=now)
     image_path = get_filename(color=color)
     if not image_path.exists():
         raise HTTPException(

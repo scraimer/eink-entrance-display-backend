@@ -67,7 +67,7 @@ def get_next_10_events() -> Optional[List[Dict[str, Any]]]:
         return None
 
 
-def render(events: List[Dict[str, Any]]):
+def calendar_render(events: List[Dict[str, Any]]):
     event_template = Template(
         textwrap.dedent(
             """\
@@ -142,7 +142,7 @@ def collect_data():
         return CALENDER_ERROR
     if not events:
         return EMPTY_CALENDER
-    return render(events=events)
+    return calendar_render(events=events)
 
 
 if __name__ == "__main__":
