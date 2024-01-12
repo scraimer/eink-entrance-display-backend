@@ -269,7 +269,7 @@ def weather_report(weather_forcast: weather.WeatherForToday, color: str):
         <ul>
             {hours_str}
         </ul>
-        <span class="min_max_notes">{weather_forcast.min_max_soon}</span>
+        <span class="black min_max_notes">{weather_forcast.min_max_soon}</span>
     </div>
     """
 
