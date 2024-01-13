@@ -133,12 +133,15 @@ def omer_count(today: datetime.date):
     else:
         return f"{delta.days} בעומר"
 
+@dataclass
+class PageData:
+    zmanim: Optional[efrat_zmanim.ShabbatZmanim]
+    weather_forecast: weather.WeatherForToday
+    calendar_content: str
+    chores_content: chores.ChoreData
 
-def collect_all_values_of_data(
-    zmanim: Optional[efrat_zmanim.ShabbatZmanim],
-    weather_forecast: weather.WeatherForToday,
-    calendar_content: str,
-    chores_content: chores.ChoreData,
+def extract_values_for_template_from_collected_data(
+    src: PageData,
     color: str,
     now: datetime.datetime
 ) -> Dict[str, Any]:
@@ -146,11 +149,11 @@ def collect_all_values_of_data(
     omer = omer_count(today=now.date())
     try:
         parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
-        if not parasha and zmanim and zmanim.name:
-            parasha = zmanim.name
+        if not parasha and src.zmanim and src.zmanim.name:
+            parasha = src.zmanim.name
         zmanim_dict = {
             "parasha": parasha,
-            **{k: v for k, v in zmanim.times.items()},
+            **{k: v for k, v in src.zmanim.times.items()},
         }
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
     except Exception as ex:
@@ -160,18 +163,18 @@ def collect_all_values_of_data(
         zmanim_dict = {"Error": str(ex)}
 
     weather_dict = {
-        "current_temp": round(weather_forecast.current.feels_like),
+        "current_temp": round(src.weather_forecast.current.feels_like),
         "weather_warning_icon": "",
-        "weather_report": weather.weather_report(weather_forcast=weather_forecast, color=color),
+        "weather_report": weather.weather_report(weather_forcast=src.weather_forecast, color=color),
     }
     JACKET_WEATHER_TEMPERATURE = 13
-    if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
+    if src.weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
         x = f"""
             <span id="current-weather-warning-icon">
                 <img src="/app/assets/pic/jacket-black.png" class="black" />
             </span>"""
         weather_dict["weather_warning_icon"] = x
-    if zmanim and is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
+    if src.zmanim and is_tset_soon(src.zmanim.times.get("tset_shabat_as_datetime", None), now):
         additional_css = """
             #shul { display: none; }
             #test-big { display: block; }
@@ -187,12 +190,12 @@ def collect_all_values_of_data(
         "heb_date": heb_date.hebrew_date_string(),
         "additional_css": additional_css,
     }
-    calendar_dict = {"calendar_content": calendar_content}
+    calendar_dict = {"calendar_content": src.calendar_content}
 
-    if chores_content.error:
-        chores_str = chores_content.error
+    if src.chores_content.error:
+        chores_str = src.chores_content.error
     else:
-        chores_str = chores.render_chores(chores=chores_content.chores, now=now, color=color)
+        chores_str = chores.render_chores(chores=src.chores_content.chores, now=now, color=color)
     chores_dict = {
         "chores_content": chores_str,
     }
@@ -246,11 +249,8 @@ def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys
 def generate_html_content(color: str, now: datetime.datetime) -> str:
     collected = collect_data(now=now)
     try:
-        all_values = collect_all_values_of_data(
-            zmanim=collected.zmanim,
-            weather_forecast=collected.weather_forecast,
-            calendar_content=collected.calendar_content,
-            chores_content=collected.chores_content,
+        template_values = extract_values_for_template_from_collected_data(
+            src=collected,
             color=color,
             now=now)
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
@@ -258,14 +258,15 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
         print("Warning: Could not collect all values of data.")
         # TODO: indent the exception under the warning
         traceback.print_exc()
-        all_values = {"Error": str(ex)}
+        template_values = {"Error": str(ex)}
     (template, template_required_keys) = load_template_by_time(now=now)
-    missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
+    missing_keys = find_missing_template_keys(
+        all_values=template_values, template_required_keys=template_required_keys)
     # Fill in missing keys
     for k in missing_keys:
-        all_values[k[1:]] = "[ERR]"
-    all_values["color"] = color
-    return template.substitute(**all_values)
+        template_values[k[1:]] = "[ERR]"
+    template_values["color"] = color
+    return template.substitute(**template_values)
 
 
 def render_html_template(
@@ -284,13 +285,6 @@ def get_filename(color: str) -> Path:
         )
     return out_dir / (color + ".png")
 
-
-@dataclass
-class PageData:
-    zmanim: Optional[efrat_zmanim.ShabbatZmanim]
-    weather_forecast: weather.WeatherForToday
-    calendar_content: str
-    chores_content: chores.ChoreData
 
 def collect_data(now: datetime.datetime):
     return PageData(
