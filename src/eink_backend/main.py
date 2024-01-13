@@ -3,16 +3,13 @@ import datetime
 import shutil
 from string import Template
 import subprocess
-import textwrap
 from typing import Any, Dict, List, Optional, Set, Tuple
 from pathlib import Path
 import os
 import re
 from PIL import Image, ImageDraw, ImageFont
-from datetime import date
 from pyluach import dates, parshios
 import traceback
-import urllib
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -21,8 +18,6 @@ from . import my_calendar, weather, efrat_zmanim, chores
 
 FRIDAY = 4
 SATURDAY = 5
-
-INDENT = "    "
 
 root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 """This should point to the parent of the `src` directory"""
@@ -116,242 +111,6 @@ def render_html_template_single_color(color: str, html_content: str) -> Path:
     return out_path
 
 
-def image_single_color_channel_filename(img_url: str, color: str) -> str:
-    url = urllib.parse.urlparse(img_url)
-    return f"{color}-{Path(url.path).name}"
-
-
-EXTRACTED_CACHE = Path("/image-cache")
-
-
-import colorsys
-
-
-def rgb_to_hsv(src):
-    (r, g, b) = src
-    (r, g, b) = (r / 255, g / 255, b / 255)
-    (h, s, v) = colorsys.rgb_to_hsv(r, g, b)
-    return (h, s, v)
-
-
-def extract_red(src: Image.Image) -> Image.Image:
-    red_img, green_img, blue_img, alpha_img = src.split()
-    red_data = red_img.getdata()
-    green_data = green_img.getdata()
-    blue_data = blue_img.getdata()
-    alpha_data = alpha_img.getdata()
-    grayscale = Image.new("LA", (src.width, src.height), 0)
-    assert len(red_data) == len(alpha_data)
-    THRESH = 180
-    fn = lambda x: 255 if x < THRESH else 0
-    grayscale_data = []
-    for i in range(0, len(red_data)):
-        (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
-        if (h <= 0.1 or h >= 0.9) and (v >= 0.8) and (s >= 0.3):
-            grayscale_data.append(0)
-        else:
-            grayscale_data.append(255)
-    # grayscale_data = [fn(x) for x in red_data]
-    grayscale.putdata(grayscale_data)
-    grayscale.putalpha(alpha_img)
-    return grayscale
-
-
-def extract_black_and_gray(src: Image.Image) -> Image.Image:
-    red_img, green_img, blue_img, alpha_img = src.split()
-    red_data = red_img.getdata()
-    green_data = green_img.getdata()
-    blue_data = blue_img.getdata()
-    alpha_data = alpha_img.getdata()
-    grayscale = Image.new("LA", (src.width, src.height), 0)
-    assert len(red_data) == len(alpha_data)
-    THRESH = 180
-    fn = lambda x: 255 if x < THRESH else 0
-    grayscale_data = []
-    dither_counter = 0
-    for i in range(0, len(red_data)):
-        (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
-        if s <= 0.3:
-            if v < 0.3:
-                grayscale_data.append(0)
-            elif v > 0.99:
-                grayscale_data.append(255)
-            else:
-                dither_counter += 1
-                if dither_counter % 3 == 0:
-                    grayscale_data.append(0)
-                else:
-                    grayscale_data.append(255)
-        else:
-            grayscale_data.append(255)
-    # grayscale_data = [fn(x) for x in red_data]
-    grayscale.putdata(grayscale_data)
-    grayscale.putalpha(alpha_img)
-    return grayscale
-
-def should_download_to_cache(filepath: Path) -> bool:
-    if not filepath.exists():
-        return True
-    SEVEN_DAYS = datetime.timedelta(days=7)
-    file_datetime = datetime.datetime.fromtimestamp(filepath.stat().st_mtime)
-    file_too_old = ((file_datetime - datetime.datetime.now() ) >= SEVEN_DAYS)
-    return file_too_old
-
-
-def image_extract_color_channel(img_url: str, color: str) -> str:
-    EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
-    filename = image_single_color_channel_filename(img_url=img_url, color=color)
-    filepath = EXTRACTED_CACHE / filename
-
-    if color == "joined":
-        if not img_url.startswith("file://"):
-            return img_url
-        srcpath = Path(img_url.replace("file://", ""))
-        x = srcpath.read_bytes()
-        filepath.write_bytes(x)
-        return str(filepath)
-
-    if should_download_to_cache(filepath):
-        try:
-            url = urllib.parse.urlparse(img_url)
-            src_filename = f"/tmp/src.{Path(url.path).suffix}"
-            print(f"Downloading {img_url}")
-            urllib.request.urlretrieve(img_url, src_filename)
-            src_image = Image.open(src_filename)
-            if color == "red":
-                red_image = extract_red(src=src_image)
-                red_image.save(str(filepath))
-            elif color == "black":
-                black_image = extract_black_and_gray(src=src_image)
-                black_image.save(str(filepath))
-        except Exception as ex:
-            print(f"Warning: Could not extract color channel from {img_url}")
-            print(textwrap.indent(traceback.format_exc(), prefix=INDENT))
-            return f"-EXCEPTION: {ex}-"
-    else:
-        print(f"Using {str(filepath)} from cache")
-
-    return str(filepath)
-
-
-def weather_report(weather_forcast: weather.WeatherForToday, color: str):
-    hours_template = Template(
-        """
-        <li>
-        <ul>
-            <li class="black hour">$hour_modified</li>
-            <li class="black temp">$feels_like_rounded&deg;C</li>
-            <li class="$color icon"><img src="$icon_url_modified"/></li>
-            <li class="black type">$hour_desc</li>
-            <li class="black status">$detailed_status</li>
-        </ul>
-        </li>"""
-    )
-
-    hours_str = ""
-    hours_to_display = list(weather_forcast.hourlies.values())[0:4]
-    for hour in hours_to_display:
-        hour_modified = hour.hour[0:5] + (
-            f'<span class="tomorrow">{hour.relative_day}</span>' if hour.relative_day else ""
-        )
-        hours_str += hours_template.substitute(
-            **hour.__dict__,
-            hour_modified=hour_modified,
-            icon_url_modified=image_extract_color_channel(
-                img_url=hour.icon_url, color=color
-            ),
-            feels_like_rounded=round(hour.feels_like),
-            color=color,
-        )
-
-    return f"""
-    <div id="weather-table">
-        <ul>
-            {hours_str}
-        </ul>
-        <span class="black min_max_notes">{weather_forcast.min_max_soon}</span>
-    </div>
-    """
-
-@dataclass
-class Assignee:
-    name: str
-    avatar: str
-
-def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
-    first_name = raw_assignee.split(" ")[0].lower()
-    TABLE = {
-        "shalom": Assignee(name="Shalom", avatar=None),
-        "ariel": Assignee(name="Ariel", avatar="ariel.png"),
-        "asaf": Assignee(name="Asaf", avatar="asaf.png"),
-        "amalya": Assignee(name="Amalya", avatar="amalya.png"),
-        "alon": Assignee(name="Alon", avatar="alon.png"),
-        "aviv": Assignee(name="Aviv", avatar="aviv.png"),
-    }
-    if first_name in TABLE:
-        return TABLE[first_name]
-    else:
-        return None
-
-def render_chores(chores: List[chores.Chore], now: datetime, color: str):
-    # Sort the chores:
-    # - assigned items are later
-    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
-    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
-
-    chore_template = Template(
-        textwrap.dedent(
-            """\
-        <li class="chore$extra_classes">
-            <ul>
-                <li class="avatar">$avatar_img</li>
-                <li class="black name">$name</li>
-                <li class="black assignee">$assignee</li>
-            </ul>
-        </li>"""
-        )
-    )
-
-    today = now.date()
-    chores_str = ""
-    for chore in chores:
-        if chore.due > today:
-            # print("SKIPPING item in the future: " + str(chore))
-            continue
-
-        extra_classes = ""
-        avatar_img = ""
-        if chore.assignee:
-            assignee = normalize_assigneed(chore.assignee)
-            extra_classes += f" assigned"
-            if assignee and assignee.avatar:
-                avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
-                avatar_url = image_extract_color_channel(img_url=avatar_url, color=color)
-                avatar_img = f'<img src="{avatar_url}" />'
-        chore_out = {
-            "assignee": chore.assignee,
-            "name": chore.name,
-            "extra_classes": extra_classes,
-            "avatar_img": avatar_img,
-        }
-        chores_str += "\n" + textwrap.indent(
-            chore_template.substitute(chore_out),
-            prefix=INDENT,
-        )
-
-    outer_template = Template(
-        textwrap.dedent(
-            f"""\
-            <ul class="chores">
-            $x
-            </ul>
-            """
-        )
-    )
-
-    out_str = outer_template.substitute(x=chores_str)
-    return out_str
-
 def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool:
     if not tset_shabat:
         return False
@@ -403,7 +162,7 @@ def collect_all_values_of_data(
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
         "weather_warning_icon": "",
-        "weather_report": weather_report(weather_forcast=weather_forecast, color=color),
+        "weather_report": weather.weather_report(weather_forcast=weather_forecast, color=color),
     }
     JACKET_WEATHER_TEMPERATURE = 13
     if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
@@ -433,7 +192,7 @@ def collect_all_values_of_data(
     if chores_content.error:
         chores_str = chores_content.error
     else:
-        chores_str = render_chores(chores=chores_content.chores, now=now, color=color)
+        chores_str = chores.render_chores(chores=chores_content.chores, now=now, color=color)
     chores_dict = {
         "chores_content": chores_str,
     }
@@ -556,7 +315,7 @@ async def html_dev(color: str, at: Optional[str] = None):
 
 
 @app.get("/render/{color}")
-async def render(color: str):
+async def render_endpoint(color: str):
     now = datetime.datetime.now()
     render_one_color(color=color, now=now)
     return f"Rendered {color}. Waiting for download."

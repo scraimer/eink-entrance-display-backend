@@ -28,7 +28,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from string import Template
 
-from . import config
+from . import config, render
 
 INDENT = "    "
 
@@ -122,8 +122,8 @@ def calendar_render(events: List[Dict[str, Any]]):
             )
         )
         calender_str += textwrap.indent(
-            t.substitute(x=textwrap.indent(day_events_str, prefix=INDENT * 3)),
-            prefix=INDENT,
+            t.substitute(x=textwrap.indent(day_events_str, prefix=render.INDENT * 3)),
+            prefix=render.INDENT,
         )
 
     return calender_str

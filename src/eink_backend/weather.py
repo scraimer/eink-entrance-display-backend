@@ -1,9 +1,12 @@
 import sys
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from string import Template
+from typing import Dict, List, Optional
+
 from pyowm.owm import OWM
 
+from . import render
 from .config import config
 
 
@@ -110,6 +113,45 @@ def collect_data(now: datetime) -> WeatherForToday:
         min_max_soon=min_max_soon,
     )
     return out_data
+
+def weather_report(weather_forcast: WeatherForToday, color: str):
+    hours_template = Template(
+        """
+        <li>
+        <ul>
+            <li class="black hour">$hour_modified</li>
+            <li class="black temp">$feels_like_rounded&deg;C</li>
+            <li class="$color icon"><img src="$icon_url_modified"/></li>
+            <li class="black type">$hour_desc</li>
+            <li class="black status">$detailed_status</li>
+        </ul>
+        </li>"""
+    )
+
+    hours_str = ""
+    hours_to_display = list(weather_forcast.hourlies.values())[0:4]
+    for hour in hours_to_display:
+        hour_modified = hour.hour[0:5] + (
+            f'<span class="tomorrow">{hour.relative_day}</span>' if hour.relative_day else ""
+        )
+        hours_str += hours_template.substitute(
+            **hour.__dict__,
+            hour_modified=hour_modified,
+            icon_url_modified=render.image_extract_color_channel(
+                img_url=hour.icon_url, color=color
+            ),
+            feels_like_rounded=round(hour.feels_like),
+            color=color,
+        )
+
+    return f"""
+    <div id="weather-table">
+        <ul>
+            {hours_str}
+        </ul>
+        <span class="black min_max_notes">{weather_forcast.min_max_soon}</span>
+    </div>
+    """
 
 
 if __name__ == "__main__":

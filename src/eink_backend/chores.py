@@ -69,7 +69,7 @@ import textwrap
 import traceback
 from typing import Any, Dict, List, Optional
 
-from . import config
+from . import config, render
 
 
 @dataclass
@@ -79,11 +79,15 @@ class Chore:
     assignee: str
     frequency_in_weeks: int
 
-
 @dataclass
 class ChoreData:
     chores: List[Chore]
     error: Optional[str] = None
+
+@dataclass
+class Assignee:
+    name: str
+    avatar: str    
 
 def get_chores_from_spreadsheet() -> List[Chore]:
     gc: pygsheets.client.Client = pygsheets.authorize(
@@ -130,6 +134,79 @@ def collect_data(now: datetime) -> ChoreData:
         return ChoreData(chores=[], error=EMPTY_CHORES)
     return ChoreData(chores=chores)
 
+def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
+    first_name = raw_assignee.split(" ")[0].lower()
+    TABLE = {
+        "shalom": Assignee(name="Shalom", avatar=None),
+        "ariel": Assignee(name="Ariel", avatar="ariel.png"),
+        "asaf": Assignee(name="Asaf", avatar="asaf.png"),
+        "amalya": Assignee(name="Amalya", avatar="amalya.png"),
+        "alon": Assignee(name="Alon", avatar="alon.png"),
+        "aviv": Assignee(name="Aviv", avatar="aviv.png"),
+    }
+    if first_name in TABLE:
+        return TABLE[first_name]
+    else:
+        return None
+
+def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
+    # Sort the chores:
+    # - assigned items are later
+    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
+    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
+
+    chore_template = Template(
+        textwrap.dedent(
+            """\
+        <li class="chore$extra_classes">
+            <ul>
+                <li class="avatar">$avatar_img</li>
+                <li class="black name">$name</li>
+                <li class="black assignee">$assignee</li>
+            </ul>
+        </li>"""
+        )
+    )
+
+    today = now.date()
+    chores_str = ""
+    for chore in chores:
+        if chore.due > today:
+            # print("SKIPPING item in the future: " + str(chore))
+            continue
+
+        extra_classes = ""
+        avatar_img = ""
+        if chore.assignee:
+            assignee = normalize_assigneed(chore.assignee)
+            extra_classes += f" assigned"
+            if assignee and assignee.avatar:
+                avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
+                avatar_url = render.image_extract_color_channel(img_url=avatar_url, color=color)
+                avatar_img = f'<img src="{avatar_url}" />'
+        chore_out = {
+            "assignee": chore.assignee,
+            "name": chore.name,
+            "extra_classes": extra_classes,
+            "avatar_img": avatar_img,
+        }
+        chores_str += "\n" + textwrap.indent(
+            chore_template.substitute(chore_out),
+            prefix=render.INDENT,
+        )
+
+    outer_template = Template(
+        textwrap.dedent(
+            f"""\
+            <ul class="chores">
+            $x
+            </ul>
+            """
+        )
+    )
+
+    out_str = outer_template.substitute(x=chores_str)
+    return out_str
 
 # python3 -m eink_backend.chores
 if __name__ == "__main__":
