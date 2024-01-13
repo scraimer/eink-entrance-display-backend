@@ -29,8 +29,8 @@
             "name": "Python: Current File as module",
             "type": "python",
             "request": "launch",
-            "cwd": "${workspaceFolder}/src",
-            "module": "eink_backend.${fileBasenameNoExtension}",
+            "cwd": "${workspaceFolder}",
+            "module": "src.eink_backend.${fileBasenameNoExtension}",
             "console": "integratedTerminal"
         }
     ]

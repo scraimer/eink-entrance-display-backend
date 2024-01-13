@@ -133,7 +133,7 @@ EMPTY_CALENDER = "-no calendar data-"
 CALENDER_ERROR = "-error getting calendar data-"
 
 
-def collect_data():
+def collect_data(now: datetime.datetime):
     try:
         events = get_next_10_events()
     except Exception:

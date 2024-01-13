@@ -12,9 +12,9 @@ from pyluach import dates, parshios
 import traceback
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
-from . import my_calendar, weather, efrat_zmanim, chores
+from . import weather, chores, collect
 
 FRIDAY = 4
 SATURDAY = 5
@@ -133,15 +133,8 @@ def omer_count(today: datetime.date):
     else:
         return f"{delta.days} בעומר"
 
-@dataclass
-class PageData:
-    zmanim: Optional[efrat_zmanim.ShabbatZmanim]
-    weather_forecast: weather.WeatherForToday
-    calendar_content: str
-    chores_content: chores.ChoreData
-
 def extract_values_for_template_from_collected_data(
-    src: PageData,
+    src: collect.PageData,
     color: str,
     now: datetime.datetime
 ) -> Dict[str, Any]:
@@ -187,6 +180,7 @@ def extract_values_for_template_from_collected_data(
         "day_of_week": now.date().strftime("%A"),
         "date": now.date().strftime("%-d of %B %Y"),
         "render_timestamp": now.strftime("%Y-%d-%m %H:%M:%S"),
+        "collect_timestamp": src.collected_at.strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
         "additional_css": additional_css,
     }
@@ -246,8 +240,12 @@ def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys
     return missing_keys
 
 
+last_rendered:Optional[collect.PageData] = None
+
 def generate_html_content(color: str, now: datetime.datetime) -> str:
-    collected = collect_data(now=now)
+    global last_rendered
+    collected = collect.collect_data(now=now)
+    last_rendered = collected
     try:
         template_values = extract_values_for_template_from_collected_data(
             src=collected,
@@ -285,14 +283,6 @@ def get_filename(color: str) -> Path:
         )
     return out_dir / (color + ".png")
 
-
-def collect_data(now: datetime.datetime):
-    return PageData(
-        zmanim=efrat_zmanim.collect_data(now=now),
-        weather_forecast=weather.collect_data(now=now),
-        calendar_content=my_calendar.collect_data(),
-        chores_content=chores.collect_data(now=now),
-    )
 
 def render_one_color(color: str, now: datetime.datetime):
     color = untaint_filename(color)
@@ -344,3 +334,20 @@ async def read_image_from_cache(filename: str):
             status_code=404,
             detail="The requested image could not be found.",
         )
+
+
+@dataclass
+class ChangedReponse:
+    changed: bool
+    at: str
+
+@app.get("/changed", response_class=JSONResponse)
+async def check_if_collected_data_has_changed():
+    global last_rendered
+
+    now = datetime.datetime.now()
+    collected = collect.collect_data(now=now)
+    if last_rendered != collected:
+        return ChangedReponse(changed=True, at=now.isoformat())
+    else:
+        return ChangedReponse(changed=False, at=now.isoformat())
