@@ -13,4 +13,4 @@ content.html
 tmp
 .secrets
 google-sheets-bot-auth.json
-
+node_modules
