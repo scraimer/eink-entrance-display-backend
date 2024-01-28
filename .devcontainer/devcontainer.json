@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
 {
-	"name": "Anaconda (Python 3)",
+	"name": "eInk Backend devcontainer",
 	"build": {
 		"context": "..",
 		"dockerfile": "Dockerfile"
@@ -26,8 +26,7 @@
 	// Make the timezone Israel
 	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime",
 	"containerEnv": {
-		"TZ": "Israel",
-		"MY_CONTAINER_VAR2": "${localEnv:SOME_LOCAL_VAR}"
+		"TZ": "Israel"
 	},
 	"customizations": {
 		"vscode": {
