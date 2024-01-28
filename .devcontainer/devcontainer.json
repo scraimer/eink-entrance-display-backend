@@ -13,8 +13,9 @@
 		8323
 	],
 	"mounts": [
-		// Mount ~/.ssh in the container for the SSH keys
-		"source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached",
+		// Mount ~/.ssh as .my-ssh in the container for the SSH keys, and we'll copy it
+		// to ~/.ssh, since the mounted files are mounted with the wrong permissions
+		"source=${localEnv:HOME}/.ssh,target=/root/.my-ssh,type=bind,consistency=cached",
 		// Mount the workspace as `/app`, just like we do in the deployment app
 		"source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached"
 	],
@@ -22,9 +23,9 @@
 	// "customizations": {},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// Make the timezone Israel
-	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime",
+	// 1. Make the timezone Israel
+	// 2. Copy the SSH keys and config from ~/.my-ssh to ~/.ssh
+	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime ; mkdir -p /root/.ssh ; cp /root/.my-ssh/* /root/.ssh/",
 	"containerEnv": {
 		"TZ": "Israel"
 	},
