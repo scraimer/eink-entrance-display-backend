@@ -34,4 +34,14 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git
 
+# # TODO: Use a temporary container (named "builder") to install `go` and build `task`,
+# #       and then copy over the `task` executable to this container.
+# # Install go, to install `task`
+# RUN cd /tmp \
+#     wget https://go.dev/dl/go1.21.6.linux-armv6l.tar.gz &&  \
+#     tar -C /usr/local -xzf go1.21.6.linux-armv6l.tar.gz
+# ENV PATH="${PATH}:/usr/local/go/bin"
+# ENV GOPATH=/root/go
+# RUN env GOBIN=/bin go install github.com/go-task/task/v3/cmd/task@latest
+
 # TODO: Move this up to be with the rest of the pip3
