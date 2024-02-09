@@ -136,18 +136,19 @@ def collect_data(now: datetime) -> ChoreData:
 
 def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
     first_name = raw_assignee.split(" ")[0].lower()
+    DEFAULT="DEFAULT"
     TABLE = {
-        "shalom": Assignee(name="Shalom", avatar=None),
         "ariel": Assignee(name="Ariel", avatar="ariel.png"),
         "asaf": Assignee(name="Asaf", avatar="asaf.png"),
         "amalya": Assignee(name="Amalya", avatar="amalya.png"),
         "alon": Assignee(name="Alon", avatar="alon.png"),
         "aviv": Assignee(name="Aviv", avatar="aviv.png"),
+        DEFAULT: Assignee(name="Other", avatar="other.png")
     }
     if first_name in TABLE:
         return TABLE[first_name]
     else:
-        return None
+        return TABLE[DEFAULT]
 
 def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
     # Sort the chores:
