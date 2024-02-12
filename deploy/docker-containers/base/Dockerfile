@@ -1,4 +1,4 @@
-FROM python:3.7-slim-buster
+FROM python:3.12-slim-bullseye
 
 RUN apt-get update && \
     apt-get install -y \
@@ -15,7 +15,7 @@ RUN pip3 install bs4
 RUN pip3 install requests
 RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
 RUN pip3 install pillow
-RUN pip3 install pyluach 
+RUN pip3 install pyluach
 
 RUN apt-get -y install firefox-esr
 
@@ -26,3 +26,6 @@ RUN pip3 install zmanim
 RUN pip3 install pyowm
 RUN pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 RUN pip3 install pygsheets
+
+# Fix the symlink to python to match up with my host machine
+RUN ln -s /usr/local/bin/python3 /usr/bin/python3
