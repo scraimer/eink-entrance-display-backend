@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   PROD_PORT: 8321
-  DEV_PORT: 8322
+  DEV_PORT: 8323
   PROD_IMAGE: eink-entrance-display-backend:latest
   DEBUG_IMAGE: eink-entrance-display-backend-debug:latest
 
@@ -23,11 +23,6 @@ tasks:
     cmds:
       - docker run -d --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} {{.PROD_IMAGE}}
 
-  debug_run:
-    desc: Run the server outside the server, for debugging
-    cmds:
-      - /home/pi/.local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.PROD_PORT}}
-
   debug_build_docker:
     desc: Build the docker, while preserving intermediate layers
     cmds:
@@ -39,18 +34,15 @@ tasks:
     cmds:
       - docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
-  debug_dev_docker:
-    desc: Build and run the development docker
+  debug_run:
+    desc: Run the server outside the server, for debugging (inside devcontainer only)
     cmds:
-      - task: build_base_docker_container
-      - docker build --tag eink-entrance-display-backend-debug-dev:latest --rm=false deploy/docker-containers/debug-dev
-      - docker run --rm -it --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app eink-entrance-display-backend-debug-dev:latest
+      - /usr/local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.DEV_PORT}}
 
   run_tests:
-    desc: Build debug docker and run the tests
+    desc: Build debug docker and run the tests (inside devcontainer only)
     cmds:
-      - task: debug_build_docker
-      - docker run --rm -it --mount type=bind,source="$(pwd)",target=/app --entrypoint "" {{.DEBUG_IMAGE}} bash -c "cd /app; pytest"
+      - bash -c "cd /app; pytest"
 
 
   default:
