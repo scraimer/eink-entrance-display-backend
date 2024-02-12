@@ -16,7 +16,7 @@ RUN pip3 install bs4
 RUN pip3 install requests
 RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
 RUN pip3 install pillow
-RUN pip3 install pyluach 
+RUN pip3 install pyluach
 
 RUN apt-get -y install firefox-esr
 
@@ -34,14 +34,14 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git
 
-# # TODO: Use a temporary container (named "builder") to install `go` and build `task`,
-# #       and then copy over the `task` executable to this container.
-# # Install go, to install `task`
-# RUN cd /tmp \
-#     wget https://go.dev/dl/go1.21.6.linux-armv6l.tar.gz &&  \
-#     tar -C /usr/local -xzf go1.21.6.linux-armv6l.tar.gz
-# ENV PATH="${PATH}:/usr/local/go/bin"
-# ENV GOPATH=/root/go
-# RUN env GOBIN=/bin go install github.com/go-task/task/v3/cmd/task@latest
+# Install go, to install the `task` command
+RUN mkdir -p /tmp/for-docker && \
+    cd /tmp/for-docker && \
+    wget https://go.dev/dl/go1.21.6.linux-armv6l.tar.gz &&  \
+    tar -C /usr/local -xzf go1.21.6.linux-armv6l.tar.gz
+ENV PATH="${PATH}:/usr/local/go/bin"
+ENV GOPATH=/root/go
+RUN env GOBIN=/bin go install github.com/go-task/task/v3/cmd/task@latest
 
-# TODO: Move this up to be with the rest of the pip3
+# Fix the symlink to python to match up with my host machine
+RUN ln -s /usr/local/bin/python3 /usr/bin/python3

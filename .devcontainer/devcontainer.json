@@ -37,6 +37,7 @@
 				"ms-python.vscode-pylance",
 				"ms-python.black-formatter",
 				"ms-python.isort",
+				"eamodio.gitlens",
 				"discretegames.f5anything"
 			]
 		}
