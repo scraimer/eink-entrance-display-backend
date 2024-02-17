@@ -70,7 +70,7 @@ def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> 
         font_size = 10
         font = ImageFont.truetype(str(root_dir / "assets/fonts/arial.ttf"), font_size)
         draw = ImageDraw.Draw(image)
-        text_width, text_height = draw.textsize(text, font=font)
+        text_width, text_height = font.getsize(text)
         text_x = DEVICE_WIDTH - text_width
         text_y = DEVICE_HEIGHT - text_height
 
