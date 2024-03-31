@@ -35,7 +35,6 @@
 		"vscode": {
 			"extensions": [
 				"ms-azuretools.vscode-docker",
-				"github.copilot",
 				"ms-python.vscode-pylance",
 				"ms-python.black-formatter",
 				"ms-python.isort",
