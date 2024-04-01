@@ -79,15 +79,18 @@ class Chore:
     assignee: str
     frequency_in_weeks: int
 
+
 @dataclass
 class ChoreData:
     chores: List[Chore]
     error: Optional[str] = None
 
+
 @dataclass
 class Assignee:
     name: str
-    avatar: str    
+    avatar: str
+
 
 def get_chores_from_spreadsheet() -> List[Chore]:
     gc: pygsheets.client.Client = pygsheets.authorize(
@@ -95,16 +98,18 @@ def get_chores_from_spreadsheet() -> List[Chore]:
     )
     sh: pygsheets.Spreadsheet = gc.open_by_key(config.config.google_sheets.sheet_id)
     worksheet: pygsheets.Worksheet = sh.worksheet_by_title(
-        config.config.google_sheets.worksheet_name
+        config.config.google_sheets.chores_worksheet_name
     )
 
-    def parse_record(src:Dict[str,Any]) -> Chore:
+    def parse_record(src: Dict[str, Any]) -> Chore:
         frequency_in_weeks = 1
         try:
             frequency_in_weeks = int(src["Frequency in Weeks"])
         except ValueError:
-            print("Error parsing Frequency in Weeks from value "
-                  f"{src['Frequency in Weeks']} for chore {src['Name']}")
+            print(
+                "Error parsing Frequency in Weeks from value "
+                f"{src['Frequency in Weeks']} for chore {src['Name']}"
+            )
 
         return Chore(
             due=date.fromisoformat(src["Due Date"]),
@@ -134,21 +139,23 @@ def collect_data(now: datetime) -> ChoreData:
         return ChoreData(chores=[], error=EMPTY_CHORES)
     return ChoreData(chores=chores)
 
+
 def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
     first_name = raw_assignee.split(" ")[0].lower()
-    DEFAULT="DEFAULT"
+    DEFAULT = "DEFAULT"
     TABLE = {
         "ariel": Assignee(name="Ariel", avatar="ariel.png"),
         "asaf": Assignee(name="Asaf", avatar="asaf.png"),
         "amalya": Assignee(name="Amalya", avatar="amalya.png"),
         "alon": Assignee(name="Alon", avatar="alon.png"),
         "aviv": Assignee(name="Aviv", avatar="aviv.png"),
-        DEFAULT: Assignee(name="Other", avatar="other.png")
+        DEFAULT: Assignee(name="Other", avatar="other.png"),
     }
     if first_name in TABLE:
         return TABLE[first_name]
     else:
         return TABLE[DEFAULT]
+
 
 def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
     # Sort the chores:
@@ -183,7 +190,9 @@ def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
             extra_classes += f" assigned"
             if assignee and assignee.avatar:
                 avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
-                avatar_url = render.image_extract_color_channel(img_url=avatar_url, color=color)
+                avatar_url = render.image_extract_color_channel(
+                    img_url=avatar_url, color=color
+                )
                 avatar_img = f'<img src="{avatar_url}" />'
         chore_out = {
             "assignee": chore.assignee,
@@ -209,9 +218,9 @@ def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
     out_str = outer_template.substitute(x=chores_str)
     return out_str
 
+
 # python3 -m eink_backend.chores
 if __name__ == "__main__":
-    #out = collect_data(now=datetime.datetime(year=2023, month=12, day=15, hour=10, minute=00))
+    # out = collect_data(now=datetime.datetime(year=2023, month=12, day=15, hour=10, minute=00))
     out = collect_data(now=datetime.datetime.now())
     print(out)
-

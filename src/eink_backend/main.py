@@ -14,7 +14,7 @@ import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
-from . import my_calendar, weather, efrat_zmanim, chores
+from . import my_calendar, weather, efrat_zmanim, chores, seating
 
 FRIDAY = 4
 SATURDAY = 5
@@ -51,7 +51,7 @@ def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
     mono_image.save(dest)
 
 
-def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> None:
+def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -> None:
     DEVICE_HEIGHT = 880
     DEVICE_WIDTH = 528
 
@@ -74,7 +74,7 @@ def clip_image_to_device_dimensions_in_place(file_to_modify:Path, color:str) -> 
         text_x = DEVICE_WIDTH - text_width
         text_y = DEVICE_HEIGHT - text_height
 
-        text_fill = (0,0,0)
+        text_fill = (0, 0, 0)
         if color in ("red", "black"):
             text_fill = 0
         draw.text((text_x, text_y), text, font=font, fill=text_fill)
@@ -139,8 +139,9 @@ def collect_all_values_of_data(
     weather_forecast: weather.WeatherForToday,
     calendar_content: str,
     chores_content: chores.ChoreData,
+    seating_content: seating.SeatingData,
     color: str,
-    now: datetime.datetime
+    now: datetime.datetime,
 ) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.from_pydate(now.date())
     omer = omer_count(today=now.date())
@@ -162,7 +163,9 @@ def collect_all_values_of_data(
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
         "weather_warning_icon": "",
-        "weather_report": weather.weather_report(weather_forcast=weather_forecast, color=color),
+        "weather_report": weather.weather_report(
+            weather_forcast=weather_forecast, color=color
+        ),
     }
     JACKET_WEATHER_TEMPERATURE = 13
     if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
@@ -192,7 +195,9 @@ def collect_all_values_of_data(
     if chores_content.error:
         chores_str = chores_content.error
     else:
-        chores_str = chores.render_chores(chores=chores_content.chores, now=now, color=color)
+        chores_str = chores.render_chores(
+            chores=chores_content.chores, now=now, color=color
+        )
     chores_dict = {
         "chores_content": chores_str,
     }
@@ -200,23 +205,33 @@ def collect_all_values_of_data(
         "omer": f"{omer}",
         "omer_display": "inline" if omer else "none",
     }
+    seating_dict = {
+        "seat1": "",
+        "seat2": seating_content.seats[0].name,
+        "seat3": seating_content.seats[1].name,
+        "seat4": seating_content.seats[2].name,
+        "seat6": "A5",
+        "seat8": seating_content.seats[3].name,
+    }
     all_values = {
         **zmanim_dict,
         **page_dict,
         **weather_dict,
         **calendar_dict,
         **chores_dict,
+        **seating_dict,
         **omer_dict,
     }
     return all_values
 
 
-def load_template_from_file(file:Path) -> Tuple[Template, List[str]]:
+def load_template_from_file(file: Path) -> Tuple[Template, List[str]]:
     template_text = file.read_text(encoding="utf-8")
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
     template = Template(template_text)
     return (template, template_required_keys)
+
 
 def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
     wkday = now.weekday()
@@ -227,10 +242,17 @@ def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
     # Friday until 16:00, use the chore template
     if wkday == FRIDAY and hour < 16:
         template_path = Path("/app/assets/layout-choreday.html")
+    # Friday and Shabbat, around meal-time, show seating layout
+    if (wkday == FRIDAY and hour >= 16) or (
+        wkday == SATURDAY and (hour >= 10 and hour <= 13)
+    ):
+        template_path = Path("/app/assets/layout-shabbat-seating.html")
     return load_template_from_file(file=template_path)
 
 
-def find_missing_template_keys(all_values:Dict[str, Any], template_required_keys: Set[Any]):
+def find_missing_template_keys(
+    all_values: Dict[str, Any], template_required_keys: Set[Any]
+):
     dollar_keys = set([f"${x}" for x in all_values.keys()])
     missing_keys = template_required_keys - dollar_keys
     if missing_keys:
@@ -251,8 +273,10 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
             weather_forecast=collected.weather_forecast,
             calendar_content=collected.calendar_content,
             chores_content=collected.chores_content,
+            seating_content=collected.seating_content,
             color=color,
-            now=now)
+            now=now,
+        )
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
     except Exception as ex:
         print("Warning: Could not collect all values of data.")
@@ -260,7 +284,9 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
         traceback.print_exc()
         all_values = {"Error": str(ex)}
     (template, template_required_keys) = load_template_by_time(now=now)
-    missing_keys = find_missing_template_keys(all_values=all_values, template_required_keys=template_required_keys)
+    missing_keys = find_missing_template_keys(
+        all_values=all_values, template_required_keys=template_required_keys
+    )
     # Fill in missing keys
     for k in missing_keys:
         all_values[k[1:]] = "[ERR]"
@@ -268,10 +294,7 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
     return template.substitute(**all_values)
 
 
-def render_html_template(
-    color: str,
-    now: datetime.datetime
-):
+def render_html_template(color: str, now: datetime.datetime):
     html_content = generate_html_content(color=color, now=now)
     render_html_template_single_color(color=color, html_content=html_content)
 
@@ -291,6 +314,8 @@ class PageData:
     weather_forecast: weather.WeatherForToday
     calendar_content: str
     chores_content: chores.ChoreData
+    seating_content: seating.SeatingData
+
 
 def collect_data(now: datetime.datetime):
     return PageData(
@@ -298,7 +323,9 @@ def collect_data(now: datetime.datetime):
         weather_forecast=weather.collect_data(now=now),
         calendar_content=my_calendar.collect_data(),
         chores_content=chores.collect_data(now=now),
+        seating_content=seating.collect_data(now=now),
     )
+
 
 def render_one_color(color: str, now: datetime.datetime):
     color = untaint_filename(color)
