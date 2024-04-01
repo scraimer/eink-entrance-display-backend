@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+
 @dataclass
 class GeoLocation:
     lat: float
@@ -20,7 +21,8 @@ class GoogleCalendar:
 @dataclass
 class GoogleSheet:
     sheet_id: str
-    worksheet_name: str
+    chores_worksheet_name: str
+    seating_worksheet_name: str
     json_file: Path
 
 
@@ -49,7 +51,8 @@ config = Config(
     openweathermap_api_key=os.getenv("SECRETS_OPENWEATHERMAP_API_KEY"),
     google_sheets=GoogleSheet(
         sheet_id="1TJoMDv5UUEzY1IYEn3Ce-MmhlnP8ytGQLnx9dg8LFm8",
-        worksheet_name="Friday Chores",
+        chores_worksheet_name="Friday Chores",
+        seating_worksheet_name="Shabbat Seating",
         json_file=google_sheets_auth_json,
     ),
 )

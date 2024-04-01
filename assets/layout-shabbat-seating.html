@@ -1,0 +1,347 @@
+<html>
+
+<head>
+    <style type="text/css">
+        body,
+        td {
+            font-size: 24px;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+
+            font-smooth: never;
+            -webkit-font-smoothing: none;
+        }
+
+        #eink-display-size {
+            width: 528px;
+            height: 880px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        h1 {
+            padding: 0;
+            margin: 0;
+            text-align: center;
+        }
+
+        h2 {
+            padding: 0;
+            margin: 0;
+            line-height: 1.0em;
+            font-size: 36px;
+        }
+
+        h2 #omer {
+            float: left;
+            margin-left: 15px;
+            font-size: 20px;
+            direction: rtl;
+        }
+
+        #footer {
+            font-size: 10px;
+            display: block;
+            width: 200px;
+            height: 20px;
+            position: absolute;
+            bottom: 0px;
+            left: 0px;
+        }
+
+        .zone {
+            margin-top: 0px;
+        }
+
+        #title-day-of-week {
+            font-size: 36px;
+            float: left;
+        }
+
+        #title-date {
+            font-size: 18px;
+        }
+
+        #title-hebrew-date {
+            font-size: 18px;
+        }
+
+        #tset-big .title {
+            clear: both;
+        }
+
+        #tset-big .value {
+            font-size: 138px;
+            font-weight: bold;
+        }
+
+        #weather-table {
+            border: 1px solid black;
+            width: 526px;
+            margin: 0px;
+        }
+
+        #weather-table ul {
+            padding: 0;
+            margin: 0;
+        }
+
+        #weather-table>ul>li {
+            list-style: none;
+            display: block;
+        }
+
+        #weather-table>ul>li {
+            display: inline-block;
+            vertical-align: top;
+            height: 220px;
+        }
+
+        #weather-table>ul>li li {
+            width: 120px;
+            overflow: hidden;
+        }
+
+        #weather-table li.hour {
+            height: 50px;
+            width: 100%;
+            text-align: center;
+            display: block;
+        }
+
+        #weather-table li.hour .tomorrow {
+            display: block;
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 10px;
+        }
+
+        #weather-table .min_max_notes {
+            display: block;
+            font-size: 12px;
+            line-height: 12px;
+        }
+
+        #weather-table li.temp {
+            font-size: 40px;
+            line-height: 40px;
+            height: 40px;
+            font-weight: bold;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.icon {
+            line-height: 50px;
+            height: 50px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.type {
+            font-size: 15px;
+            line-height: 15px;
+            height: 15px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #weather-table li.status {
+            height: 70px;
+            font-size: 20px;
+            text-align: center;
+            display: block;
+            overflow: hidden;
+        }
+
+        #current-weather-warning-icon img {
+            width: 40px;
+            height: auto;
+        }
+
+        #calendar {
+            width: 50%;
+            height: 360px;
+            overflow: hidden;
+            margin-top: 1px;
+            float: right;
+        }
+
+        #calendar li {
+            list-style: none;
+        }
+
+        #calendar ul {
+            padding: 0;
+            margin: 0;
+        }
+
+        #calendar .day {
+            display: inline-block;
+            vertical-align: top;
+            width: 49%;
+            overflow: hidden;
+        }
+
+        /* Hide all but the first day */
+        #calendar .day:nth-child(n+2) {
+            display: none;
+        }
+
+        #calendar .day .day_title {
+            font-weight: bold;
+            border-bottom: solid 2px black;
+        }
+
+        #calendar .day .day_events>li {
+            display: block;
+            border-bottom: dashed 1px black;
+        }
+
+        #calendar .start_hour {
+            display: inline-block;
+            width: 70px;
+            font-weight: bold;
+            vertical-align: top;
+        }
+
+        #calendar .summary {
+            width: 180px;
+            display: inline-block;
+            overflow: hidden;
+            vertical-align: top;
+        }
+
+        .red {
+            color: red;
+        }
+
+        .black {
+            color: black;
+        }
+
+        #fake {
+            position: absolute;
+            display: none;
+            top: 500px;
+            left: 0px;
+            width: 100%;
+            height: 210px;
+            background-image: url("/app/assets/pic/50-percent-screen-white.png");
+            background-repeat: repeat;
+        }
+
+        .show-only-red .black,
+        .show-only-black .red {
+            visibility: hidden !important;
+        }
+
+        .show-only-red .red {
+            color: black !important;
+        }
+
+        $additional_css
+    </style>
+</head>
+<!-- Replace `_show-only-red` with `show-only-red` to only show black. Same with black. -->
+
+<body class="_show-only-red _show-only-black show-only-$color" id="eink-display-size">
+    <h1 class="black">
+        <div id="title-day-of-week">$day_of_week</div>
+        <div id="title-date">$date</div>
+        <div id="title-hebrew-date">$heb_date</div>
+    </h1>
+    <div class="zone" id="shul" dir="rtl">
+        <h2 class="red">$parasha
+            <div id="omer" style="display: $omer_display;">$omer</div>
+        </h2>
+        <table dir="rtl" class="black">
+            <tr>
+                <td>הדלקת נרות</td>
+                <td>$candle_lighting</td>
+            </tr>
+            <tr>
+                <td>מנחה וקבלת שבת</td>
+                <td>$kabalat_shabbat</td>
+            </tr>
+            <tr>
+                <td>שחרית</td>
+                <td>06:45</td>
+                <td>08:30</td>
+                <td>09:00</td>
+            </tr>
+            <tr>
+                <td>מוצאי שבת</td>
+                <td>$tzet_shabat</td>
+            </tr>
+        </table>
+    </div>
+    <div id="tset-big" dir="rtl">
+        <span class="title black">מוצאי שבת</span><br>
+        <span class="value red">$tzet_shabat</span>
+    </div>
+    <div class="zone">
+        <span class="black">Outside temperature: </span>
+        <span style="font-size: 2em" class="red">$current_temp&deg;C</span>
+        $weather_warning_icon
+        <br />
+        <span>
+            $weather_report
+        </span>
+        <!--
+        <span class="black">
+            Today: 14&deg;C to 35&deg;C (15:00) with NNW 5km/h winds.<br/>
+            From 07:00 to 09:00 the temperature goes from 17&deg;C to 28&deg;C,<br/>
+            then continues rising slowly until hitting 35&deg;C at 15:00 and<br/>
+            dropping to 25&deg;C by 19:00.
+        </span>
+        -->
+    </div>
+    <div id="calendar" class="zone">
+        $calendar_content
+    </div>
+    <svg id="seating" class="zone" width="200" height="300" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="100%" height="100%" stroke="black" stroke-width="2" fill="silver" />
+        <!-- seat #1 -->
+        <ellipse cx="30%" cy="0" rx="25" ry="25" fill="black" />
+        <text id="seat1" x="25%" y="16" font-size="20" font-weight="bold" fill="white">$seat1</text>
+        <!-- seat #2 -->
+        <ellipse cx="70%" cy="0" rx="25" ry="25" fill="black" />
+        <text id="seat2" x="65%" y="16" font-size="20" font-weight="bold" fill="white">$seat2</text>
+        <!-- seat #3 -->
+        <ellipse cx="100%" cy="30%" rx="30" ry="25" fill="black" />
+        <text id="seat3" x="87%" y="32%" font-size="20" font-weight="bold" fill="white">$seat3</text>
+        <!-- seat #4 -->
+        <ellipse cx="100%" cy="70%" rx="30" ry="25" fill="black" />
+        <text id="seat4" x="87%" y="72%" font-size="20" font-weight="bold" fill="white">$seat4</text>
+        <!-- seat #5 - Shalom -->
+        <ellipse cx="70%" cy="100%" rx="25" ry="25" fill="red" />
+        <text id="seat5" x="63%" y="98%" font-size="20" font-weight="bold" fill="black">אבא</text>
+        <!-- seat #6 -->
+        <ellipse cx="30%" cy="100%" rx="25" ry="25" fill="black" />
+        <text id="seat6" x="24%" y="98%" font-size="20" font-weight="bold" fill="white">$seat6</text>
+        <!-- seat #7  - Miriam Malka -->
+        <ellipse cx="0%" cy="70%" rx="35" ry="25" fill="red" />
+        <text id="seat4" x="0%" y="72%" font-size="20" font-weight="bold" fill="black">אמא</text>
+        <!-- seat #8 -->
+        <ellipse cx="0%" cy="30%" rx="35" ry="25" fill="black" />
+        <text id="seat3" x="0%" y="32%" font-size="20" font-weight="bold" fill="white">$seat8</text>
+    </svg>
+    <div id="footer" class="black">Rendered $render_timestamp</div>
+    <div id="fake">&nbsp;</div>
+</body>
+
+</html>
