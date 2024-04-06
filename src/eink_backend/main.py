@@ -70,7 +70,9 @@ def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -
         font_size = 10
         font = ImageFont.truetype(str(root_dir / "assets/fonts/arial.ttf"), font_size)
         draw = ImageDraw.Draw(image)
-        text_width, text_height = font.getsize(text)
+        left, top, right, bottom = font.getbbox(text)
+        text_width = bottom - top
+        text_height = right - left
         text_x = DEVICE_WIDTH - text_width
         text_y = DEVICE_HEIGHT - text_height
 
@@ -205,14 +207,9 @@ def collect_all_values_of_data(
         "omer": f"{omer}",
         "omer_display": "inline" if omer else "none",
     }
-    seating_dict = {
-        "seat1": "",
-        "seat2": seating_content.seats[0].name,
-        "seat3": seating_content.seats[1].name,
-        "seat4": seating_content.seats[2].name,
-        "seat6": "A5",
-        "seat8": seating_content.seats[3].name,
-    }
+    seating_dict: Dict[str, str] = {}
+    for seat in seating_content.seats:
+        seating_dict[f"seat{seat.number}"] = seat.name
     all_values = {
         **zmanim_dict,
         **page_dict,
@@ -257,7 +254,7 @@ def find_missing_template_keys(
     missing_keys = template_required_keys - dollar_keys
     if missing_keys:
         print(
-            "Warning: the follow template variable missing.\n"
+            "Warning: the following template variable missing.\n"
             "They will be replaced by a placeholder:\n" + str(missing_keys)
         )
         # raise KeyError("Required keys are missing:", missing_keys)
