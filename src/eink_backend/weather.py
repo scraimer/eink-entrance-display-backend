@@ -119,6 +119,8 @@ def collect_data(now: datetime) -> WeatherForToday:
         current=WeatherDataPoint(
             feels_like=owm_forecast.current.temperature("celsius")["feels_like"],
             icon_url=owm_forecast.current.weather_icon_url(),
+            uv_index=owm_forecast.current.uvi,
+            probability_of_precipiration=owm_forecast.current.precipitation_probability,
         ),
         hourlies=school_hours_hourlies,
         all_hourlies=all_hourlies,
