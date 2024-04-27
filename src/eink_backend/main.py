@@ -162,8 +162,17 @@ def collect_all_values_of_data(
         traceback.print_exc()
         zmanim_dict = {"Error": str(ex)}
 
+    uv_index = ""
+    if weather_forecast.current.uv_index:
+        uv_index = f"UV: {weather_forecast.current.uv_index}"
+    rain_percent = ""
+    if weather_forecast.current.probability_of_precipiration:
+        rain_percent = f"Rain: {weather_forecast.current.probability_of_precipiration}%"
+
     weather_dict = {
         "current_temp": round(weather_forecast.current.feels_like),
+        "current_uv": uv_index,
+        "current_precipitation": rain_percent,
         "weather_warning_icon": "",
         "weather_report": weather.weather_report(
             weather_forcast=weather_forecast, color=color
