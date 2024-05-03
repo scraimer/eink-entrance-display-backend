@@ -101,25 +101,38 @@ def get_chores_from_spreadsheet() -> List[Chore]:
         config.config.google_sheets.chores_worksheet_name
     )
 
-    def parse_record(src: Dict[str, Any]) -> Chore:
+    def parse_record(src: Dict[str, Any]) -> Optional[Chore]:
         frequency_in_weeks = 1
+        due=date.today()
+
         try:
             frequency_in_weeks = int(src["Frequency in Weeks"])
         except ValueError:
             print(
                 "Error parsing Frequency in Weeks from value "
-                f"{src['Frequency in Weeks']} for chore {src['Name']}"
+                f"\"{src['Frequency in Weeks']}\" for chore \"{src['Name']}\""
             )
+            return None
 
+        try:
+            due = date.fromisoformat(src["Due Date"])
+        except ValueError:
+            print(
+                "Error parsing Due date from value "
+                f"\"{src['Due Date']}\" for chore \"{src['Name']}\""
+            )
+            return None
+            
         return Chore(
-            due=date.fromisoformat(src["Due Date"]),
+            due=due,
             name=src["Name"],
             assignee=src["Assignee"],
             frequency_in_weeks=frequency_in_weeks,
         )
 
     records = worksheet.get_all_records()
-    return [parse_record(r) for r in records]
+    parsed_records = [parse_record(r) for r in records]
+    return [r for r in parsed_records if r]
 
 
 EMPTY_CHORES = "-no chores data-"
