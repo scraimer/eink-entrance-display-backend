@@ -53,13 +53,14 @@ def extract_red(src: Image.Image) -> Image.Image:
 
 
 def extract_black_and_gray(src: Image.Image) -> Image.Image:
-    red_img, green_img, blue_img, alpha_img = src.split()
+    channels = src.split()
+    # .split() may return either 3 or 4 channels (depending on whether the
+    # image has an alpha channel). So take just the first 3
+    red_img, green_img, blue_img  = channels[0], channels[1], channels[1]
     red_data = red_img.getdata()
     green_data = green_img.getdata()
     blue_data = blue_img.getdata()
-    alpha_data = alpha_img.getdata()
     grayscale = Image.new("LA", (src.width, src.height), 0)
-    assert len(red_data) == len(alpha_data)
     THRESH = 180
     fn = lambda x: 255 if x < THRESH else 0
     grayscale_data = []
@@ -79,9 +80,7 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
                     grayscale_data.append(255)
         else:
             grayscale_data.append(255)
-    # grayscale_data = [fn(x) for x in red_data]
     grayscale.putdata(grayscale_data)
-    grayscale.putalpha(alpha_img)
     return grayscale
 
 
@@ -120,4 +119,11 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
         print(f"Using {str(filepath)} from cache")
 
     return str(filepath)
+
+
+if __name__ == "__main__":
+    src_filename = "assets/avatars/joined/other.png"
+    src_image = Image.open(src_filename)
+    breakpoint()
+    black_image = extract_black_and_gray(src=src_image)
 
