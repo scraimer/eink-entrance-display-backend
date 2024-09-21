@@ -298,22 +298,8 @@
         <span class="title black">מוצאי שבת</span><br>
         <span class="value red">$tzet_shabat</span>
     </div>
-    <div class="zone">
-        <span class="black">Outside temperature: </span>
-        <span style="font-size: 2em" class="red">$current_temp&deg;C</span>
-        $weather_warning_icon
-        <br />
-        <span>
-            $weather_report
-        </span>
-        <!--
-        <span class="black">
-            Today: 14&deg;C to 35&deg;C (15:00) with NNW 5km/h winds.<br/>
-            From 07:00 to 09:00 the temperature goes from 17&deg;C to 28&deg;C,<br/>
-            then continues rising slowly until hitting 35&deg;C at 15:00 and<br/>
-            dropping to 25&deg;C by 19:00.
-        </span>
-        -->
+    <div id="weather" class="zone">
+    	$weather_report
     </div>
     <div id="calendar" class="zone">
         $calendar_content

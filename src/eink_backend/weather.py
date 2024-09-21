@@ -38,7 +38,14 @@ class TemperatureAtTime:
     temperature: int
 
 
-def collect_data(now: datetime) -> WeatherForToday:
+def collect_data(now: datetime) -> Optional[WeatherForToday]:
+    try:
+        return _collect_data_impl(now)
+    except Exception as ex:
+        print(f"Error getting weather data: {ex}")
+        return None
+
+def _collect_data_impl(now: datetime) -> WeatherForToday:
     # Setup: The API key you got from the OpenWeatherMap website, save it
     #        as `SECRETS_OPENWEATHERMAP_API_KEY` in the file `.secrets`
     #
@@ -177,13 +184,39 @@ def weather_report(weather_forcast: WeatherForToday, color: str):
             color=color,
         )
 
+    current_uv = ""
+    current_precipitation = ""
+    if weather_forecast.current.uv_index:
+        current_uv = f"UV: {weather_forecast.current.uv_index}"
+    rain_percent = ""
+    if weather_forecast.current.probability_of_precipiration:
+        current_precipitation = f"Rain: {weather_forecast.current.probability_of_precipiration}%"
+
+    current_temp = round(weather_forecast.current.feels_like)
+    weather_warning_icon = ""
+    JACKET_WEATHER_TEMPERATURE = 13
+    if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
+        x = f"""
+            <span id="current-weather-warning-icon">
+                <img src="/app/assets/pic/jacket-black.png" class="black" />
+            </span>"""
+        weather_warning_icon = x
+
     return f"""
-    <div id="weather-table">
-        <ul>
-            {hours_str}
-        </ul>
-        <span class="black min_max_notes">{weather_forcast.min_max_soon}</span>
-    </div>
+    <span class="black">Outside temperature: </span>
+    <span style="font-size: 2em" class="red">{current_temp}&deg;C</span>
+    {weather_warning_icon}
+    <span id="current-uv" class="black">{current_uv}</span>
+    <span id="current-rain" class="black">{current_precipitation}</span>
+    <br />
+    <span>
+         <div id="weather-table">
+            <ul>
+                {hours_str}
+            </ul>
+            <span class="black min_max_notes">{weather_forcast.min_max_soon}</span>
+        </div>
+    </span>
     """
 
 

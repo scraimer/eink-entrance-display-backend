@@ -135,7 +135,6 @@ def omer_count(today: datetime.date):
     else:
         return f"{delta.days} בעומר"
 
-
 def collect_all_values_of_data(
     zmanim: Optional[efrat_zmanim.ShabbatZmanim],
     weather_forecast: weather.WeatherForToday,
@@ -162,29 +161,17 @@ def collect_all_values_of_data(
         traceback.print_exc()
         zmanim_dict = {"Error": str(ex)}
 
-    uv_index = ""
-    if weather_forecast.current.uv_index:
-        uv_index = f"UV: {weather_forecast.current.uv_index}"
-    rain_percent = ""
-    if weather_forecast.current.probability_of_precipiration:
-        rain_percent = f"Rain: {weather_forecast.current.probability_of_precipiration}%"
+    weather_dict = { "weather_report": "" }
+    try:
+        weather_report = weather.weather_report(
+                weather_forcast=weather_forecast, color=color)
+        if weather_report:
+            weather_dict["weather_report"] = weather_report
+    except Exception as ex:
+        msg = f"Exception colecting error report: {ex}"
+        weather_dict["weather_report"] = msg
+        print(msg)
 
-    weather_dict = {
-        "current_temp": round(weather_forecast.current.feels_like),
-        "current_uv": uv_index,
-        "current_precipitation": rain_percent,
-        "weather_warning_icon": "",
-        "weather_report": weather.weather_report(
-            weather_forcast=weather_forecast, color=color
-        ),
-    }
-    JACKET_WEATHER_TEMPERATURE = 13
-    if weather_forecast.current.feels_like <= JACKET_WEATHER_TEMPERATURE:
-        x = f"""
-            <span id="current-weather-warning-icon">
-                <img src="/app/assets/pic/jacket-black.png" class="black" />
-            </span>"""
-        weather_dict["weather_warning_icon"] = x
     if zmanim and is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
         additional_css = """
             #shul { display: none; }
@@ -317,7 +304,7 @@ def get_filename(color: str) -> Path:
 @dataclass
 class PageData:
     zmanim: Optional[efrat_zmanim.ShabbatZmanim]
-    weather_forecast: weather.WeatherForToday
+    weather_forecast: Optional[weather.WeatherForToday]
     calendar_content: str
     chores_content: chores.ChoreData
     seating_content: seating.SeatingData
