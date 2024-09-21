@@ -32,7 +32,8 @@ tasks:
   debug_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
-      - docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
+      #- docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
+      - docker run -it --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
   debug_run:
     desc: Run the server outside the server, for debugging (inside devcontainer only)
