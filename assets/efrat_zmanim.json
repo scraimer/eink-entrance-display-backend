@@ -1,399 +1,388 @@
 [
     {
-        "gregorian_date": "2023-09-16",
+        "gregorian_date": "2024-10-03",
         "name": "\u05d0' \u05e8\u05d0\u05e9 \u05d4\u05e9\u05e0\u05d4",
-        "candle_lighting": "18:29",
-        "tzet_shabat": "19:21"
+        "tzet_shabat": "18:07",
+        "candle_lighting": "18:26"
     },
     {
-        "gregorian_date": "2023-09-17",
+        "gregorian_date": "2024-10-04",
         "name": "\u05d1' \u05e8\u05d0\u05e9 \u05d4\u05e9\u05e0\u05d4",
-        "candle_lighting": "\u05d0\u05d7\u05e8\u05d9 19:21",
-        "tzet_shabat": "19:19"
+        "tzet_shabat": "\u05dc\u05d0 \u05dc\u05e4\u05e0\u05d9 18:57",
+        "candle_lighting": "18:24"
     },
     {
-        "gregorian_date": "2023-09-18",
-        "name": "\u05e6\u05d5\u05dd \u05d2\u05d3\u05dc\u05d9\u05d4",
-        "fast_start": "05:05",
-        "fast_end": "19:02"
+        "gregorian_date": "2024-10-05",
+        "name": "\u05d4\u05d0\u05d6\u05d9\u05e0\u05d5",
+        "tzet_shabat": "18:04",
+        "candle_lighting": "18:23"
     },
     {
-        "gregorian_date": "2023-09-23",
-        "name": "\u05d4\u05d0\u05d6\u05d9\u05e0\u05d5, \u05e9\u05d5\u05d1\u05d4",
-        "candle_lighting": "18:20",
-        "tzet_shabat": "19:11"
+        "fast_end": "18:42",
+        "fast_start": "05:20",
+        "gregorian_date": "2024-10-06",
+        "name": "\u05e6\u05d5\u05dd \u05d2\u05d3\u05dc\u05d9\u05d4 (\u05e0\u05d3\u05d7\u05d4)",
+        "candle_lighting": "18:22"
     },
     {
-        "gregorian_date": "2023-09-25",
-        "name": "\u05d9\u05d5\u05dd \u05db\u05d9\u05e4\u05d5\u05e8",
-        "candle_lighting": "18:17",
-        "tzet_shabat": "19:09"
+        "gregorian_date": "2024-10-12",
+        "name": "\u05e9\u05d1\u05ea \u05d9\u05d5\u05dd \u05db\u05d9\u05e4\u05d5\u05e8",
+        "tzet_shabat": "17:56",
+        "candle_lighting": "18:14"
     },
     {
-        "gregorian_date": "2023-09-30",
+        "gregorian_date": "2024-10-17",
         "name": "\u05e1\u05d5\u05db\u05d5\u05ea",
-        "candle_lighting": "18:11",
-        "tzet_shabat": "19:02"
+        "tzet_shabat": "17:50",
+        "candle_lighting": "18:09"
     },
     {
-        "gregorian_date": "2023-10-07",
-        "name": "\u05e9\u05d1\u05ea,\u05e9\u05de\u05d9\u05e0\u05d9 \u05e2\u05e6\u05e8\u05ea",
-        "candle_lighting": "18:02",
-        "tzet_shabat": "18:53"
-    },
-    {
-        "gregorian_date": "2023-10-14",
-        "name": "\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea",
-        "candle_lighting": "17:53",
-        "tzet_shabat": "18:45"
-    },
-    {
-        "gregorian_date": "2023-10-21",
-        "name": "\u05e0\u05d7",
-        "candle_lighting": "17:45",
-        "tzet_shabat": "18:37"
-    },
-    {
-        "gregorian_date": "2023-10-28",
-        "name": "\u05dc\u05da \u05dc\u05da",
-        "candle_lighting": "17:38",
-        "tzet_shabat": "18:31"
-    },
-    {
-        "gregorian_date": "2023-11-04",
-        "name": "\u05d5\u05d9\u05e8\u05d0. \u05e9\u05e2\u05d5\u05df \u05d7\u05d5\u05e8\u05e3",
-        "candle_lighting": "16:32",
-        "tzet_shabat": "17:25"
-    },
-    {
-        "gregorian_date": "2023-11-11",
-        "name": "\u05d7\u05d9\u05d9 \u05e9\u05e8\u05d4",
-        "candle_lighting": "16:27",
-        "tzet_shabat": "17:20"
-    },
-    {
-        "gregorian_date": "2023-11-18",
-        "name": "\u05ea\u05d5\u05dc\u05d3\u05d5\u05ea",
-        "candle_lighting": "16:23",
-        "tzet_shabat": "17:17"
-    },
-    {
-        "gregorian_date": "2023-11-25",
-        "name": "\u05d5\u05d9\u05e6\u05d0",
-        "candle_lighting": "16:20",
-        "tzet_shabat": "17:15"
-    },
-    {
-        "gregorian_date": "2023-12-02",
-        "name": "\u05d5\u05d9\u05e9\u05dc\u05d7",
-        "candle_lighting": "16:19",
-        "tzet_shabat": "17:14"
-    },
-    {
-        "gregorian_date": "2023-12-08",
-        "name": "\u05d0' \u05d7\u05e0\u05d5\u05db\u05d4"
-    },
-    {
-        "gregorian_date": "2023-12-09",
-        "name": "\u05d5\u05d9\u05e9\u05d1",
-        "candle_lighting": "16:19",
-        "tzet_shabat": "17:15"
-    },
-    {
-        "gregorian_date": "2023-12-16",
-        "name": "\u05de\u05e7\u05e5",
-        "candle_lighting": "16:21",
-        "tzet_shabat": "17:17"
-    },
-    {
-        "gregorian_date": "2023-12-22",
-        "name": "\u05e6\u05d5\u05dd \u05d9' \u05d1\u05d8\u05d1\u05ea",
-        "fast_start": "05:28",
-        "fast_end": "17:00"
-    },
-    {
-        "gregorian_date": "2023-12-23",
-        "name": "\u05d5\u05d9\u05d2\u05e9",
-        "candle_lighting": "16:23",
-        "tzet_shabat": "17:20"
-    },
-    {
-        "gregorian_date": "2023-12-30",
-        "name": "\u05d5\u05d9\u05d7\u05d9",
-        "candle_lighting": "16:28",
-        "tzet_shabat": "17:24"
-    },
-    {
-        "gregorian_date": "2024-01-06",
-        "name": "\u05e9\u05de\u05d5\u05ea",
-        "candle_lighting": "16:33",
-        "tzet_shabat": "17:29"
-    },
-    {
-        "gregorian_date": "2024-01-13",
-        "name": "\u05d5\u05d0\u05e8\u05d0",
-        "candle_lighting": "16:38",
-        "tzet_shabat": "17:35"
-    },
-    {
-        "gregorian_date": "2024-01-20",
-        "name": "\u05d1\u05d0",
-        "candle_lighting": "16:45",
-        "tzet_shabat": "17:40"
-    },
-    {
-        "gregorian_date": "2024-01-27",
-        "name": "\u05d1\u05e9\u05dc\u05d7",
-        "candle_lighting": "16:51",
-        "tzet_shabat": "17:46"
-    },
-    {
-        "gregorian_date": "2024-02-03",
-        "name": "\u05d9\u05ea\u05e8\u05d5",
-        "candle_lighting": "16:57",
-        "tzet_shabat": "17:52"
-    },
-    {
-        "gregorian_date": "2024-02-10",
-        "name": "\u05de\u05e9\u05e4\u05d8\u05d9\u05dd",
-        "candle_lighting": "17:03",
-        "tzet_shabat": "17:58"
-    },
-    {
-        "gregorian_date": "2024-02-17",
-        "name": "\u05ea\u05e8\u05d5\u05de\u05d4",
-        "candle_lighting": "17:09",
-        "tzet_shabat": "18:04"
-    },
-    {
-        "gregorian_date": "2024-02-24",
-        "name": "\u05ea\u05e6\u05d5\u05d4, \u05e9\u05d5\u05e9\u05df \u05e4\u05d5\u05e8\u05d9\u05dd \u05e7\u05d8\u05df",
-        "candle_lighting": "17:15",
-        "tzet_shabat": "18:09"
-    },
-    {
-        "gregorian_date": "2024-03-02",
-        "name": "\u05db\u05d9 \u05ea\u05e9\u05d0",
-        "candle_lighting": "17:19",
-        "tzet_shabat": "18:14"
-    },
-    {
-        "gregorian_date": "2024-03-09",
-        "name": "\u05d5\u05d9\u05e7\u05d4\u05dc, \u05e9\u05e7\u05dc\u05d9\u05dd",
-        "candle_lighting": "17:24",
-        "tzet_shabat": "18:19"
-    },
-    {
-        "gregorian_date": "2024-03-16",
-        "name": "\u05e4\u05e7\u05d5\u05d3\u05d9",
-        "candle_lighting": "17:29",
-        "tzet_shabat": "18:24"
-    },
-    {
-        "gregorian_date": "2024-03-21",
-        "name": "\u05ea\u05e2\u05e0\u05d9\u05ea \u05d0\u05e1\u05ea\u05e8 (\u05de\u05d5\u05e7\u05d3\u05dd)",
-        "fast_start": "04:23",
-        "fast_end": "18:10"
-    },
-    {
-        "gregorian_date": "2024-03-23",
-        "name": "\u05d5\u05d9\u05e7\u05e8\u05d0, \u05d6\u05db\u05d5\u05e8",
-        "candle_lighting": "17:34",
-        "tzet_shabat": "18:29"
-    },
-    {
-        "gregorian_date": "2024-03-24",
-        "name": "\u05e4\u05d5\u05e8\u05d9\u05dd"
-    },
-    {
-        "gregorian_date": "2024-03-30",
-        "name": "\u05e6\u05d5, \u05e4\u05e8\u05d4 . \u05e9\u05e2\u05d5\u05df \u05e7\u05d9\u05e5",
-        "candle_lighting": "18:38",
-        "tzet_shabat": "19:34"
-    },
-    {
-        "gregorian_date": "2024-04-06",
-        "name": "\u05e9\u05de\u05d9\u05e0\u05d9, \u05d4\u05d7\u05d5\u05d3\u05e9",
-        "candle_lighting": "18:43",
-        "tzet_shabat": "19:39"
-    },
-    {
-        "gregorian_date": "2024-04-13",
-        "name": "\u05ea\u05d6\u05e8\u05d9\u05e2",
-        "candle_lighting": "18:47",
-        "tzet_shabat": "19:44"
-    },
-    {
-        "gregorian_date": "2024-04-20",
-        "name": "\u05de\u05e6\u05d5\u05e8\u05e2, \u05e9\u05d1\u05ea \u05d4\u05d2\u05d3\u05d5\u05dc",
-        "candle_lighting": "18:52",
-        "tzet_shabat": "19:50"
-    },
-    {
-        "gregorian_date": "2024-04-23",
-        "name": "\u05e4\u05e1\u05d7",
-        "candle_lighting": "18:54",
-        "tzet_shabat": "19:52"
-    },
-    {
-        "gregorian_date": "2024-04-27",
+        "gregorian_date": "2024-10-19",
         "name": "\u05e9\u05d1\u05ea \u05d7\u05d5\u05dc \u05d4\u05de\u05d5\u05e2\u05d3",
-        "candle_lighting": "18:57",
-        "tzet_shabat": "19:55"
+        "tzet_shabat": "17:47",
+        "candle_lighting": "18:06"
     },
     {
-        "gregorian_date": "2024-04-29",
-        "name": "\u05e9\u05d1\u05d9\u05e2\u05d9 \u05e9\u05dc \u05e4\u05e1\u05d7",
-        "candle_lighting": "18:59",
-        "tzet_shabat": "19:57"
+        "gregorian_date": "2024-10-24",
+        "name": "\u05e9\u05de\u05d7\u05ea \u05ea\u05d5\u05e8\u05d4",
+        "tzet_shabat": "17:42",
+        "candle_lighting": "18:01"
     },
     {
-        "gregorian_date": "2024-05-04",
-        "name": "\u05d0\u05d7\u05e8\u05d9 \u05de\u05d5\u05ea",
-        "candle_lighting": "19:02",
-        "tzet_shabat": "20:01"
+        "gregorian_date": "2024-10-26",
+        "name": "\u05d1\u05e8\u05d0\u05e9\u05d9\u05ea",
+        "tzet_shabat": "17:40",
+        "candle_lighting": "17:59"
     },
     {
-        "gregorian_date": "2024-05-11",
-        "name": "\u05e7\u05d3\u05d5\u05e9\u05d9\u05dd",
-        "candle_lighting": "19:07",
-        "tzet_shabat": "20:06"
+        "gregorian_date": "2024-11-02",
+        "name": "\u05e0\u05d7 (\u05e9\u05e2\u05d5\u05df \u05d7\u05d5\u05e8\u05e3)",
+        "tzet_shabat": "16:34",
+        "candle_lighting": "16:53"
     },
     {
-        "gregorian_date": "2024-05-18",
+        "gregorian_date": "2024-11-09",
+        "name": "\u05dc\u05da \u05dc\u05da",
+        "tzet_shabat": "16:28",
+        "candle_lighting": "16:47"
+    },
+    {
+        "gregorian_date": "2024-11-16",
+        "name": "\u05d5\u05d9\u05e8\u05d0",
+        "tzet_shabat": "16:24",
+        "candle_lighting": "16:43"
+    },
+    {
+        "gregorian_date": "2024-11-23",
+        "name": "\u05d7\u05d9\u05d9 \u05e9\u05e8\u05d4",
+        "tzet_shabat": "16:21",
+        "candle_lighting": "16:40"
+    },
+    {
+        "gregorian_date": "2024-11-30",
+        "name": "\u05ea\u05d5\u05dc\u05d3\u05d5\u05ea",
+        "tzet_shabat": "16:19",
+        "candle_lighting": "16:39"
+    },
+    {
+        "gregorian_date": "2024-12-07",
+        "name": "\u05d5\u05d9\u05e6\u05d0",
+        "tzet_shabat": "16:19",
+        "candle_lighting": "16:39"
+    },
+    {
+        "gregorian_date": "2024-12-14",
+        "name": "\u05d5\u05d9\u05e9\u05dc\u05d7",
+        "tzet_shabat": "16:20",
+        "candle_lighting": "16:40"
+    },
+    {
+        "gregorian_date": "2024-12-21",
+        "name": "\u05d5\u05d9\u05e9\u05d1",
+        "tzet_shabat": "16:22",
+        "candle_lighting": "16:43"
+    },
+    {
+        "gregorian_date": "2024-12-26",
+        "name": "\u05d0' \u05d7\u05e0\u05d5\u05db\u05d4",
+        "candle_lighting": "16:46"
+    },
+    {
+        "gregorian_date": "2024-12-28",
+        "name": "\u05de\u05e7\u05e5",
+        "tzet_shabat": "16:26",
+        "candle_lighting": "16:47"
+    },
+    {
+        "gregorian_date": "2025-01-04",
+        "name": "\u05d5\u05d9\u05d2\u05e9",
+        "tzet_shabat": "16:31",
+        "candle_lighting": "16:52"
+    },
+    {
+        "fast_end": "17:15",
+        "fast_start": "05:32",
+        "gregorian_date": "2025-01-10",
+        "name": "\u05e6\u05d5\u05dd \u05d9' \u05d1\u05d8\u05d1\u05ea",
+        "candle_lighting": "16:57"
+    },
+    {
+        "gregorian_date": "2025-01-11",
+        "name": "\u05d5\u05d9\u05d7\u05d9",
+        "tzet_shabat": "16:37",
+        "candle_lighting": "16:58"
+    },
+    {
+        "gregorian_date": "2025-01-18",
+        "name": "\u05e9\u05de\u05d5\u05ea",
+        "tzet_shabat": "16:43",
+        "candle_lighting": "17:04"
+    },
+    {
+        "gregorian_date": "2025-01-25",
+        "name": "\u05d5\u05d0\u05e8\u05d0",
+        "tzet_shabat": "16:49",
+        "candle_lighting": "17:10"
+    },
+    {
+        "gregorian_date": "2025-02-01",
+        "name": "\u05d1\u05d0",
+        "tzet_shabat": "16:55",
+        "candle_lighting": "17:16"
+    },
+    {
+        "gregorian_date": "2025-02-08",
+        "name": "\u05d1\u05e9\u05dc\u05d7",
+        "tzet_shabat": "17:02",
+        "candle_lighting": "17:22"
+    },
+    {
+        "gregorian_date": "2025-02-15",
+        "name": "\u05d9\u05ea\u05e8\u05d5",
+        "tzet_shabat": "17:07",
+        "candle_lighting": "17:28"
+    },
+    {
+        "gregorian_date": "2025-02-22",
+        "name": "\u05de\u05e9\u05e4\u05d8\u05d9\u05dd",
+        "tzet_shabat": "17:13",
+        "candle_lighting": "17:34"
+    },
+    {
+        "gregorian_date": "2025-03-01",
+        "name": "\u05ea\u05e8\u05d5\u05de\u05d4 \u05e9\u05e7\u05dc\u05d9\u05dd",
+        "tzet_shabat": "17:18",
+        "candle_lighting": "17:39"
+    },
+    {
+        "gregorian_date": "2025-03-08",
+        "name": "\u05ea\u05e6\u05d5\u05d4 \u05d6\u05db\u05d5\u05e8",
+        "tzet_shabat": "17:24",
+        "candle_lighting": "17:44"
+    },
+    {
+        "fast_end": "18:05",
+        "fast_start": "04:32",
+        "gregorian_date": "2025-03-13",
+        "name": "\u05ea\u05e2\u05e0\u05d9\u05ea \u05d0\u05e1\u05ea\u05e8",
+        "candle_lighting": "17:47"
+    },
+    {
+        "gregorian_date": "2025-03-14",
+        "name": "\u05e4\u05d5\u05e8\u05d9\u05dd",
+        "candle_lighting": "17:48"
+    },
+    {
+        "gregorian_date": "2025-03-15",
+        "name": "\u05db\u05d9 \u05ea\u05e9\u05d0, \u05e9\u05d5\u05e9\u05df \u05e4\u05d5\u05e8\u05d9\u05dd",
+        "tzet_shabat": "17:28",
+        "candle_lighting": "17:49"
+    },
+    {
+        "gregorian_date": "2025-03-22",
+        "name": "\u05d5\u05d9\u05e7\u05d4\u05dc \u05e4\u05e8\u05d4",
+        "tzet_shabat": "17:33",
+        "candle_lighting": "17:54"
+    },
+    {
+        "gregorian_date": "2025-03-29",
+        "name": "\u05e4\u05e7\u05d5\u05d3\u05d9 \u05d4\u05d7\u05d5\u05d3\u05e9 (\u05e9\u05e2\u05d5\u05df \u05e7\u05d9\u05e5)",
+        "tzet_shabat": "18:38",
+        "candle_lighting": "18:58"
+    },
+    {
+        "gregorian_date": "2025-04-05",
+        "name": "\u05d5\u05d9\u05e7\u05e8\u05d0",
+        "tzet_shabat": "18:42",
+        "candle_lighting": "19:03"
+    },
+    {
+        "gregorian_date": "2025-04-12",
+        "name": "\u05e6\u05d5 \u05d4\u05d2\u05d3\u05d5\u05dc",
+        "tzet_shabat": "18:47",
+        "candle_lighting": "19:07"
+    },
+    {
+        "gregorian_date": "2025-04-13",
+        "name": "\u05e4\u05e1\u05d7",
+        "tzet_shabat": "\u05dc\u05d0 \u05dc\u05e4\u05e0\u05d9 19:43",
+        "candle_lighting": "19:08"
+    },
+    {
+        "gregorian_date": "2025-04-19",
+        "name": "\u05e9\u05d1\u05ea \u05e9\u05d1\u05d9\u05e2\u05d9 \u05e9\u05dc \u05e4\u05e1\u05d7",
+        "tzet_shabat": "18:51",
+        "candle_lighting": "19:12"
+    },
+    {
+        "gregorian_date": "2025-04-26",
+        "name": "\u05e9\u05de\u05d9\u05e0\u05d9",
+        "tzet_shabat": "18:56",
+        "candle_lighting": "19:17"
+    },
+    {
+        "gregorian_date": "2025-05-03",
+        "name": "\u05ea\u05d6\u05e8\u05d9\u05e2\u00ad\u05de\u05e6\u05d5\u05e8\u05e2",
+        "tzet_shabat": "19:01",
+        "candle_lighting": "19:22"
+    },
+    {
+        "gregorian_date": "2025-05-10",
+        "name": "\u05d0\u05d7\u05e8\u05d9 \u05de\u05d5\u05ea\u00ad\u05e7\u05d3\u05d5\u05e9\u05d9\u05dd",
+        "tzet_shabat": "19:06",
+        "candle_lighting": "19:27"
+    },
+    {
+        "gregorian_date": "2025-05-17",
         "name": "\u05d0\u05de\u05d5\u05e8",
-        "candle_lighting": "19:12",
-        "tzet_shabat": "20:12"
+        "tzet_shabat": "19:11",
+        "candle_lighting": "19:32"
     },
     {
-        "gregorian_date": "2024-05-25",
-        "name": "\u05d1\u05d4\u05e8",
-        "candle_lighting": "19:16",
-        "tzet_shabat": "20:17"
+        "gregorian_date": "2025-05-24",
+        "name": "\u05d1\u05d4\u05e8\u00ad\u05d1\u05d7\u05d5\u05e7\u05d5\u05ea\u05d9",
+        "tzet_shabat": "19:16",
+        "candle_lighting": "19:36"
     },
     {
-        "gregorian_date": "2024-06-01",
-        "name": "\u05d1\u05d7\u05d5\u05e7\u05d5\u05ea\u05d9",
-        "candle_lighting": "19:21",
-        "tzet_shabat": "20:22"
-    },
-    {
-        "gregorian_date": "2024-06-08",
+        "gregorian_date": "2025-05-31",
         "name": "\u05d1\u05de\u05d3\u05d1\u05e8",
-        "candle_lighting": "19:25",
-        "tzet_shabat": "20:26"
+        "tzet_shabat": "19:20",
+        "candle_lighting": "19:41"
     },
     {
-        "gregorian_date": "2024-06-12",
+        "gregorian_date": "2025-06-02",
         "name": "\u05e9\u05d1\u05d5\u05e2\u05d5\u05ea",
-        "candle_lighting": "19:27",
-        "tzet_shabat": "20:27"
+        "tzet_shabat": "19:21",
+        "candle_lighting": "19:42"
     },
     {
-        "gregorian_date": "2024-06-15",
+        "gregorian_date": "2025-06-07",
         "name": "\u05e0\u05e9\u05d0",
-        "candle_lighting": "19:28",
-        "tzet_shabat": "20:29"
+        "tzet_shabat": "19:24",
+        "candle_lighting": "19:45"
     },
     {
-        "gregorian_date": "2024-06-22",
+        "gregorian_date": "2025-06-14",
         "name": "\u05d1\u05d4\u05e2\u05dc\u05d5\u05ea\u05da",
-        "candle_lighting": "19:30",
-        "tzet_shabat": "20:30"
+        "tzet_shabat": "19:27",
+        "candle_lighting": "19:48"
     },
     {
-        "gregorian_date": "2024-06-29",
+        "gregorian_date": "2025-06-21",
         "name": "\u05e9\u05dc\u05d7",
-        "candle_lighting": "19:31",
-        "tzet_shabat": "20:31"
+        "tzet_shabat": "19:30",
+        "candle_lighting": "19:50"
     },
     {
-        "gregorian_date": "2024-07-06",
+        "gregorian_date": "2025-06-28",
         "name": "\u05e7\u05e8\u05d7",
-        "candle_lighting": "19:31",
-        "tzet_shabat": "20:30"
+        "tzet_shabat": "19:31",
+        "candle_lighting": "19:51"
     },
     {
-        "gregorian_date": "2024-07-13",
+        "gregorian_date": "2025-07-05",
         "name": "\u05d7\u05d5\u05e7\u05ea",
-        "candle_lighting": "19:30",
-        "tzet_shabat": "20:28"
+        "tzet_shabat": "19:31",
+        "candle_lighting": "19:51"
     },
     {
-        "gregorian_date": "2024-07-20",
+        "gregorian_date": "2025-07-12",
         "name": "\u05d1\u05dc\u05e7",
-        "candle_lighting": "19:27",
-        "tzet_shabat": "20:24"
+        "tzet_shabat": "19:30",
+        "candle_lighting": "19:50"
     },
     {
-        "gregorian_date": "2024-07-23",
+        "fast_end": "20:08",
+        "fast_start": "04:12",
+        "gregorian_date": "2025-07-13",
         "name": "\u05e6\u05d5\u05dd \u05d9\"\u05d6 \u05d1\u05ea\u05de\u05d5\u05d6",
-        "fast_start": "04:19",
-        "fast_end": "20:03"
+        "candle_lighting": "19:50"
     },
     {
-        "gregorian_date": "2024-07-27",
+        "gregorian_date": "2025-07-19",
         "name": "\u05e4\u05d9\u05e0\u05d7\u05e1",
-        "candle_lighting": "19:23",
-        "tzet_shabat": "20:19"
+        "tzet_shabat": "19:28",
+        "candle_lighting": "19:47"
     },
     {
-        "gregorian_date": "2024-08-03",
+        "gregorian_date": "2025-07-26",
         "name": "\u05de\u05d8\u05d5\u05ea\u00ad\u05de\u05e1\u05e2\u05d9",
-        "candle_lighting": "19:19",
-        "tzet_shabat": "20:13"
+        "tzet_shabat": "19:24",
+        "candle_lighting": "19:43"
     },
     {
-        "gregorian_date": "2024-08-10",
-        "name": "\u05d3\u05d1\u05e8\u05d9\u05dd",
-        "candle_lighting": "19:13",
-        "tzet_shabat": "20:06"
+        "gregorian_date": "2025-08-02",
+        "name": "\u05d3\u05d1\u05e8\u05d9\u05dd \u05d7\u05d6\u05d5\u05df",
+        "tzet_shabat": "19:19",
+        "candle_lighting": "19:39"
     },
     {
-        "gregorian_date": "2024-08-13",
+        "fast_end": "20:05",
+        "gregorian_date": "2025-08-03",
         "name": "\u05ea\u05e9\u05e2\u05d4 \u05d1\u05d0\u05d1",
-        "fast_end": "19:55"
+        "candle_lighting": "19:38"
     },
     {
-        "gregorian_date": "2024-08-17",
-        "name": "\u05d5\u05d0\u05ea\u05d7\u05e0\u05df",
-        "candle_lighting": "19:06",
-        "tzet_shabat": "19:58"
+        "gregorian_date": "2025-08-09",
+        "name": "\u05d5\u05d0\u05ea\u05d7\u05e0\u05df \u05e0\u05d7\u05de\u05d5",
+        "tzet_shabat": "19:14",
+        "candle_lighting": "19:33"
     },
     {
-        "gregorian_date": "2024-08-24",
+        "gregorian_date": "2025-08-16",
         "name": "\u05e2\u05e7\u05d1",
-        "candle_lighting": "18:58",
-        "tzet_shabat": "19:50"
+        "tzet_shabat": "19:07",
+        "candle_lighting": "19:26"
     },
     {
-        "gregorian_date": "2024-08-31",
+        "gregorian_date": "2025-08-23",
         "name": "\u05e8\u05d0\u05d4",
-        "candle_lighting": "18:50",
-        "tzet_shabat": "19:41"
+        "tzet_shabat": "18:59",
+        "candle_lighting": "19:18"
     },
     {
-        "gregorian_date": "2024-09-07",
+        "gregorian_date": "2025-08-30",
         "name": "\u05e9\u05d5\u05e4\u05d8\u05d9\u05dd",
-        "candle_lighting": "18:40",
-        "tzet_shabat": "19:32"
+        "tzet_shabat": "18:51",
+        "candle_lighting": "19:10"
     },
     {
-        "gregorian_date": "2024-09-14",
+        "gregorian_date": "2025-09-06",
         "name": "\u05db\u05d9 \u05ea\u05e6\u05d0",
-        "candle_lighting": "18:32",
-        "tzet_shabat": "19:22"
+        "tzet_shabat": "18:42",
+        "candle_lighting": "19:00"
     },
     {
-        "gregorian_date": "2024-09-21",
+        "gregorian_date": "2025-09-13",
         "name": "\u05db\u05d9 \u05ea\u05d1\u05d5\u05d0",
-        "candle_lighting": "18:23",
-        "tzet_shabat": "19:13"
+        "tzet_shabat": "18:33",
+        "candle_lighting": "18:52"
     },
     {
-        "gregorian_date": "2024-09-28",
-        "name": "\u05e0\u05e6\u05d1\u05d9\u05dd\u00ad\u05d5\u05d9\u05dc\u05da",
-        "candle_lighting": "18:13",
-        "tzet_shabat": "19:04"
+        "gregorian_date": "2025-09-20",
+        "name": "\u05e0\u05e6\u05d1\u05d9\u05dd",
+        "tzet_shabat": "18:24",
+        "candle_lighting": "18:43"
     }
 ]
