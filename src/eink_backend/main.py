@@ -135,9 +135,10 @@ def omer_count(today: datetime.date):
     else:
         return f"{delta.days} בעומר"
 
+
 def collect_all_values_of_data(
     zmanim: Optional[efrat_zmanim.ShabbatZmanim],
-    weather_forecast: weather.WeatherForToday,
+    weather_forecast: weather.WeatherForecast,
     calendar_content: str,
     chores_content: chores.ChoreData,
     seating_content: seating.SeatingData,
@@ -161,10 +162,11 @@ def collect_all_values_of_data(
         traceback.print_exc()
         zmanim_dict = {"Error": str(ex)}
 
-    weather_dict = { "weather_report": "" }
+    weather_dict = {"weather_report": ""}
     try:
         weather_report = weather.weather_report(
-                weather_forcast=weather_forecast, color=color)
+            weather_forecast=weather_forecast, color=color
+        )
         if weather_report:
             weather_dict["weather_report"] = weather_report
     except Exception as ex:
@@ -304,7 +306,7 @@ def get_filename(color: str) -> Path:
 @dataclass
 class PageData:
     zmanim: Optional[efrat_zmanim.ShabbatZmanim]
-    weather_forecast: Optional[weather.WeatherForToday]
+    weather_forecast: Optional[weather.WeatherForecast]
     calendar_content: str
     chores_content: chores.ChoreData
     seating_content: seating.SeatingData

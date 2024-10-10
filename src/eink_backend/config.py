@@ -31,7 +31,7 @@ class Config:
     efrat: GeoLocation
     google_calendar: GoogleCalendar
     google_sheets: GoogleSheet
-    openweathermap_api_key: str
+    openmeteo_api_key: str
 
 
 secrets_file_path = Path(__file__).parent.parent.parent / ".secrets"
@@ -48,7 +48,7 @@ config = Config(
         api_key=os.getenv("SECRETS_GOOGLE_CALENDAR_API_KEY"),
         calendar_id=os.getenv("SECRETS_GOOGLE_CALENDAR_CALENDAR_ID"),
     ),
-    openweathermap_api_key=os.getenv("SECRETS_OPENWEATHERMAP_API_KEY"),
+    openmeteo_api_key=os.getenv("SECRETS_OPEN_METEO_API_KEY"),
     google_sheets=GoogleSheet(
         sheet_id="1TJoMDv5UUEzY1IYEn3Ce-MmhlnP8ytGQLnx9dg8LFm8",
         chores_worksheet_name="Friday Chores",
