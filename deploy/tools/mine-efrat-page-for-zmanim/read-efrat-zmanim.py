@@ -83,6 +83,7 @@ OUT_FILE = "efrat_zmanim.json"
 
 def main():
     INPUT_JSON = "1/src.json"
+    print(f"Reading from {str(INPUT_JSON)}")
     table_from_pdf = json.loads(Path(INPUT_JSON).read_text(encoding="utf-8"))
     table_from_pdf = [x["cols"] for x in table_from_pdf["table"]]
     content = table_from_pdf[2:]
@@ -91,20 +92,24 @@ def main():
     for row in content:
         row = [html.unescape(x).strip() for x in row]
         fixed_date = datetime.datetime.strptime(row[-1], "%d.%m.%y").date()
+        if str(fixed_date) == "2025-05-10":
+            print(f"DEBUG: Row: {row}")
         out = {
             "fast_end": row[0],
             "fast_start": row[1],
             "gregorian_date": str(fixed_date),
             "name": row[-2],
-            "tzet_shabat": row[4],
-            "candle_lighting": row[5],
+            "tzet_shabat": row[3],
+            "candle_lighting": row[4],
         }
         out = {k: v for k, v in out.items() if v}
         results.append(out)
 
-    Path(OUT_FILE).write_text(
-        json.dumps(results), encoding="utf-8", errors="backslashescape"
+    outfile = Path(OUT_FILE)
+    outfile.write_text(
+        json.dumps(results, indent=3), encoding="utf-8", errors="backslashescape"
     )
+    print(f"Wrote results to {str(outfile)}")
 
 
 if __name__ == "__main__":
