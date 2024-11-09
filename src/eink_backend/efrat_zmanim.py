@@ -84,4 +84,8 @@ def collect_data(
 
 
 if __name__ == "__main__":
-    print(collect_data(now=datetime.now()))
+    print(
+        collect_data(
+            now=datetime(year=2024, month=11, day=8, hour=16, minute=0, second=0)
+        )
+    )
