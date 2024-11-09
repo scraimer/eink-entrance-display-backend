@@ -3,6 +3,7 @@
 # 3. Join the JSON files together
 # From the docx, extract the tables into Excel into an xlsx file.
 # pip3 install pandas openpyxl
+# 4. Copy the `efrat_zmanim.json` to `assets` directory
 
 from ctypes import Union
 from dataclasses import dataclass
