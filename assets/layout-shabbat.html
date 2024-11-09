@@ -141,12 +141,16 @@
         }
 
         #weather-table li.icon {
-            line-height: 50px;
-            height: 50px;
+            line-height: 80px;
+            height: 80px;
             width: 100%;
             text-align: center;
             display: block;
             overflow: hidden;
+        }
+
+        #weather-table li.icon img {
+            height: 80px;
         }
 
         #weather-table li.type {
@@ -160,8 +164,8 @@
         }
 
         #weather-table li.status {
-            height: 70px;
-            font-size: 20px;
+            height: 40px;
+            font-size: 15px;
             text-align: center;
             display: block;
             overflow: hidden;
@@ -288,7 +292,7 @@
         <span class="value red">$tzet_shabat</span>
     </div>
     <div id="weather" class="zone">
-    	$weather_report
+        $weather_report
     </div>
     <div id="calendar" class="zone">
         $calendar_content
