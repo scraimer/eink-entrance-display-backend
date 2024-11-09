@@ -11,17 +11,20 @@ INDENT = "    "
 
 EXTRACTED_CACHE = Path("/image-cache")
 
+
 def image_single_color_channel_filename(img_url: str, color: str) -> str:
     url = urllib.parse.urlparse(img_url)
     return f"{color}-{Path(url.path).name}"
+
 
 def should_download_to_cache(filepath: Path) -> bool:
     if not filepath.exists():
         return True
     SEVEN_DAYS = datetime.timedelta(days=7)
     file_datetime = datetime.datetime.fromtimestamp(filepath.stat().st_mtime)
-    file_too_old = ((file_datetime - datetime.datetime.now() ) >= SEVEN_DAYS)
+    file_too_old = (file_datetime - datetime.datetime.now()) >= SEVEN_DAYS
     return file_too_old
+
 
 def rgb_to_hsv(src):
     (r, g, b) = src
@@ -29,14 +32,25 @@ def rgb_to_hsv(src):
     (h, s, v) = colorsys.rgb_to_hsv(r, g, b)
     return (h, s, v)
 
+
 def extract_red(src: Image.Image) -> Image.Image:
-    red_img, green_img, blue_img, alpha_img = src.split()
+    color_channels = src.split()
+    if len(color_channels) == 4:
+        red_img, green_img, blue_img, alpha_img = color_channels
+    elif len(color_channels) == 3:
+        red_img, green_img, blue_img, alpha_img = color_channels
+        alpha_img = None
+    else:
+        print(f"Found {len(color_channels)} color channels in image, expected 3 or 4.")
     red_data = red_img.getdata()
     green_data = green_img.getdata()
     blue_data = blue_img.getdata()
-    alpha_data = alpha_img.getdata()
+    if alpha_img:
+        alpha_data = alpha_img.getdata()
+    else:
+        alpha_data = None
     grayscale = Image.new("LA", (src.width, src.height), 0)
-    assert len(red_data) == len(alpha_data)
+    assert (alpha_data is None) or (len(red_data) == len(alpha_data))
     THRESH = 180
     fn = lambda x: 255 if x < THRESH else 0
     grayscale_data = []
@@ -48,7 +62,8 @@ def extract_red(src: Image.Image) -> Image.Image:
             grayscale_data.append(255)
     # grayscale_data = [fn(x) for x in red_data]
     grayscale.putdata(grayscale_data)
-    grayscale.putalpha(alpha_img)
+    if alpha_img:
+        grayscale.putalpha(alpha_img)
     return grayscale
 
 
@@ -56,7 +71,7 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
     channels = src.split()
     # .split() may return either 3 or 4 channels (depending on whether the
     # image has an alpha channel). So take just the first 3
-    red_img, green_img, blue_img  = channels[0], channels[1], channels[1]
+    red_img, green_img, blue_img = channels[0], channels[1], channels[1]
     red_data = red_img.getdata()
     green_data = green_img.getdata()
     blue_data = blue_img.getdata()
@@ -82,7 +97,6 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
             grayscale_data.append(255)
     grayscale.putdata(grayscale_data)
     return grayscale
-
 
 
 def image_extract_color_channel(img_url: str, color: str) -> str:
@@ -126,4 +140,3 @@ if __name__ == "__main__":
     src_image = Image.open(src_filename)
     breakpoint()
     black_image = extract_black_and_gray(src=src_image)
-
