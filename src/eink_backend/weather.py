@@ -322,9 +322,20 @@ class WeatherHourly:
 
 
 @dataclass
+class WeatherDaily:
+    timestamp: datetime
+    apparent_temperature_min: float
+    """This is "feels like", combining wind chill factor, relative humidity and solar radiation"""
+    apparent_temperature_max: float
+    """This is "feels like", combining wind chill factor, relative humidity and solar radiation"""
+    weather_code: str
+
+
+@dataclass
 class WeatherForecast:
     current: WeatherHourly
     hourlies: List[WeatherHourly]
+    tomorrow: WeatherDaily
 
 
 @dataclass
@@ -349,16 +360,17 @@ def _collect_data_impl(now: datetime) -> WeatherForecast:
         f"{BASE_URL}?latitude={config.efrat.lat}&longitude={config.efrat.lon}"
         f"&current=temperature_2m,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,uv_index,apparent_temperature"
         f"&hourly=temperature_2m,rain,weather_code,wind_speed_10m,wind_direction_10m,uv_index,apparent_temperature"
-        f"&daily="
+        f"&daily=weather_code,apparent_temperature_max,apparent_temperature_min"
         f"&timezone=auto&forecast_days=3"
     )
     response = requests.get(request_url)
     data = response.json()
 
-    DATE_FORMAT = "%Y-%m-%dT%H:%M"
+    DATETIME_FORMAT = "%Y-%m-%dT%H:%M"
+    DATE_FORMAT = "%Y-%m-%d"
     current_data = data["current"]
     current = WeatherHourly(
-        timestamp=datetime.strptime(current_data["time"], DATE_FORMAT),
+        timestamp=datetime.strptime(current_data["time"], DATETIME_FORMAT),
         apparent_temperature=current_data["apparent_temperature"],
         temperature_2m=current_data["temperature_2m"],
         rain_mm=current_data["rain"],
@@ -377,7 +389,7 @@ def _collect_data_impl(now: datetime) -> WeatherForecast:
     hourlies: List[WeatherHourly] = []
     for i in range(time_len):
         hourly = WeatherHourly(
-            timestamp=datetime.strptime(hourly_data["time"][i], DATE_FORMAT),
+            timestamp=datetime.strptime(hourly_data["time"][i], DATETIME_FORMAT),
             apparent_temperature=hourly_data["apparent_temperature"][i],
             temperature_2m=hourly_data["temperature_2m"][i],
             rain_mm=hourly_data["rain"][i],
@@ -388,22 +400,19 @@ def _collect_data_impl(now: datetime) -> WeatherForecast:
         )
         hourlies.append(hourly)
 
-    return WeatherForecast(current=current, hourlies=hourlies)
+    daily_data: Dict[str, List[Union[str, float, int]]] = data["daily"]
+    tmrw_idx = 1
+    tomorrow = WeatherDaily(
+        timestamp=datetime.strptime(daily_data["time"][tmrw_idx], DATE_FORMAT),
+        weather_code=daily_data["weather_code"][tmrw_idx],
+        apparent_temperature_max=daily_data["apparent_temperature_max"][tmrw_idx],
+        apparent_temperature_min=daily_data["apparent_temperature_min"][tmrw_idx],
+    )
+
+    return WeatherForecast(current=current, hourlies=hourlies, tomorrow=tomorrow)
 
 
 def weather_report(weather_forecast: WeatherForecast, color: str):
-    hours_template = Template(
-        """
-        <li>
-        <ul>
-            <li class="black hour">$hour_modified</li>
-            <li class="black temp">$feels_like_rounded&deg;C</li>
-            <li class="$color icon"><img src="$icon_url_modified"/></li>
-            <li class="black status">$extra_details</li>
-        </ul>
-        </li>"""
-    )
-
     # When looking at the board, I want it to warn me what to prepare for:
     # - rising temperature
     # - rain (take coat!) or snow (don't go!)
@@ -445,13 +454,20 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
 
     hourlies_to_display = [next_hourly] + matching_hourlies
 
+    hours_template = Template(
+        """
+        <li>
+        <ul>
+            <li class="black hour">$hour_modified</li>
+            <li class="black temp">$feels_like_rounded&deg;C</li>
+            <li class="$color icon"><img src="$icon_url_modified"/></li>
+            <li class="black status">$extra_details</li>
+        </ul>
+        </li>"""
+    )
+
     hours_str = ""
     for hourly in hourlies_to_display:
-        # hour_modified = hour.hour[0:5] + (
-        #     f'<span class="tomorrow">{hour.relative_day}</span>'
-        #     if hour.relative_day
-        #     else ""
-        # )
         hour_modified = hourly.timestamp.strftime("%H:%M") + (
             f'<span class="tomorrow">{hourly.timestamp.strftime("%A")}</span>'
             if hourly.timestamp.day != datetime.today().day
@@ -504,6 +520,30 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
             </span>"""
         weather_warning_icon = x
 
+    tomrrow_template = Template(
+        """
+        <li>
+        <ul>
+            <li class="black hour">$tomorrow_day_of_week</li>
+            <li class="black temp">$tomorrow_min_max&deg;C</li>
+            <li class="$color icon"><img src="$icon_url_modified"/></li>
+        </ul>
+        </li>"""
+    )
+    tomorrow_day_of_week = weather_forecast.tomorrow.timestamp.strftime("%a")
+    tomorrow_str = tomrrow_template.substitute(
+        **weather_forecast.tomorrow.__dict__,
+        tomorrow_day_of_week=tomorrow_day_of_week,
+        icon_url_modified=render.image_extract_color_channel(
+            img_url=WMO_CODES[str(weather_forecast.tomorrow.weather_code)]["day"][
+                "image"
+            ],
+            color=color,
+        ),
+        tomorrow_min_max=f"{round(weather_forecast.tomorrow.apparent_temperature_min)}-{round(weather_forecast.tomorrow.apparent_temperature_max)}",
+        color=color,
+    )
+
     return f"""
     <span class="black">Outside temperature: </span>
     <span style="font-size: 2em" class="red">{current_temp}&deg;C</span>
@@ -515,6 +555,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
          <div id="weather-table">
             <ul>
                 {hours_str}
+                {tomorrow_str}
             </ul>
         </div>
     </span>
