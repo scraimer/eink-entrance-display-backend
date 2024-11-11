@@ -505,7 +505,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
 
     current_uv = ""
     current_precipitation = ""
-    if weather_forecast.current.uv_index:
+    if weather_forecast.current.uv_index > 3:
         current_uv = f"UV: {weather_forecast.current.uv_index}"
     if weather_forecast.current.rain_mm:
         current_precipitation = f"Rain: {weather_forecast.current.rain_mm}mm"
