@@ -1,10 +1,14 @@
 import colorsys
+from dataclasses import dataclass
 import datetime
 from pathlib import Path
+from typing import List, Tuple
 from PIL import Image
 import textwrap
 import traceback
 import urllib
+
+from pprint import pprint
 
 """How much to indent HTML code."""
 INDENT = "    "
@@ -67,35 +71,137 @@ def extract_red(src: Image.Image) -> Image.Image:
     return grayscale
 
 
+@dataclass
+class _GrayLevel:
+    min_sat: float = 0.0
+    max_sat: float = 1.0
+    min_val: float = 0.0
+    max_val: float = 1.0
+
+
+# Hue: Red is at 0%/100%, so anything below 8% or over 92% is reddish.
+# Saturation: Anything below 30% is mostly washed out, so we can treat it as gray.
+# Value/Lightness: We can split lightness into steps for different levels of light/dark
+#                  gray.
+#
+# Exceptions:
+# 1. Regardless of Saturation, if lightness is under 20%, it's black.
+# 2. Only if Saturation is under 15%, then Lightness over 95% is white.
+#
+
+
+def _check_if_dithering_pattern_would_give_black(
+    x: int, y: int, gray_level: int
+) -> bool:
+    # Patterns taken from https://en.wikipedia.org/wiki/Ordered_dithering
+    # Where I assume the patterns start from 0,0, and I pretend as if each black
+    # pixel is a hole to see through an entire sheet filled with the dither pattern
+    # matching the `gray_level`.
+
+    # These are based on 4x4 dithering patterns, so convert the x and y into
+    # x and y within the 4x4 dithering box
+    x = x % 4
+    y = y % 4
+
+    if gray_level == 2:  # 3rd from the left
+        # All are black, except for (0,0) and (2,2)
+        return (x, y) not in ((0, 0), (2, 2))
+    elif gray_level == 4:  # 5th from the left
+        # All are black, except for (0,0) (0,2) (2,0) (2,2)
+        return not ((x, y) in ((0, 0), (0, 2), (2, 0), (2, 2)))
+    elif gray_level == 8:  # 9th from the left (middle)
+        # Half are black.
+        # black:
+        # (0,0) (0,2)
+        # (1,1) (1,3)
+        # (2,0) (2,2)
+        # (3,1) (3,3)
+        # In other words, all the coords whose sum is even
+        return (x + y) % 2 == 0
+    elif gray_level == 14:  # Very light grey, 3rd from the right
+        # Only (0,2) and (2,0) are black
+        return (x, y) in ((0, 2), (2, 0))
+    else:
+        raise ValueError(f"Unsupported gray_level {gray_level}")
+
+
+def apply_alpha(h, s, v, alpha) -> Tuple[float]:
+    HSV_WHITE = (0.0, 0.0, 1.0)
+    alpha_ratio = float(alpha) / 255.0
+    h = h * alpha_ratio + HSV_WHITE[0] * (1 - alpha_ratio)
+    s = s * alpha_ratio + HSV_WHITE[1] * (1 - alpha_ratio)
+    v = v * alpha_ratio + HSV_WHITE[2] * (1 - alpha_ratio)
+    return (h, s, v)
+
+
+BLACK = 0
+WHITE = 255
+
+
+def gray_to_black_or_white(
+    h: float, s: float, v: float, alpha: int, x: int, y: int
+) -> int:
+    """Return 0 for black, 255 for white"""
+    (h, s, v) = apply_alpha(h, s, v, alpha=alpha)
+
+    if v <= 0.20:
+        return BLACK
+
+    # Saturation under 30% means no color, treat as gray
+    if s < 0.30:
+        if v > 0.95:
+            return WHITE
+
+        gray_level = -1
+        if v > 0.75:
+            # Very light grey, 3rd from the right
+            gray_level = 4
+        elif v > 0.50:
+            # Middling grey, 9th from the left (middle)
+            gray_level = 8
+        elif v > 0.20:
+            # dark gray, 5rd from the left
+            gray_level = 14
+        black = _check_if_dithering_pattern_would_give_black(
+            x=x, y=y, gray_level=gray_level
+        )
+        ### NOCOMMIT XXX TODO
+        # black = gray_level == 4
+        return BLACK if not black else WHITE
+    return WHITE
+
+
 def extract_black_and_gray(src: Image.Image) -> Image.Image:
-    channels = src.split()
-    # .split() may return either 3 or 4 channels (depending on whether the
-    # image has an alpha channel). So take just the first 3
-    red_img, green_img, blue_img = channels[0], channels[1], channels[1]
+    red_img = src.getchannel("R")
+    green_img = src.getchannel("G")
+    blue_img = src.getchannel("B")
     red_data = red_img.getdata()
     green_data = green_img.getdata()
     blue_data = blue_img.getdata()
-    grayscale = Image.new("LA", (src.width, src.height), 0)
-    THRESH = 180
-    fn = lambda x: 255 if x < THRESH else 0
-    grayscale_data = []
-    dither_counter = 0
+    grayscale = Image.new("L", (src.width, src.height), 0)
+
+    from collections import Counter
+
+    alpha_data = None
+    if src.has_transparency_data:
+        print("Image has transparency channel")
+        alpha_data = src.getchannel("A").getdata()
+
+    grayscale_data: List[int] = []
     for i in range(0, len(red_data)):
+        x = i % src.width
+        y = int(i / src.width)
+        alpha = alpha_data[i] if alpha_data else 100
         (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
-        if s <= 0.3:
-            if v < 0.3:
-                grayscale_data.append(0)
-            elif v > 0.99:
-                grayscale_data.append(255)
-            else:
-                dither_counter += 1
-                if dither_counter % 3 == 0:
-                    grayscale_data.append(0)
-                else:
-                    grayscale_data.append(255)
-        else:
-            grayscale_data.append(255)
+        # print((h, s, v))
+        bw_value = gray_to_black_or_white(h=h, s=s, v=v, x=x, y=y, alpha=alpha)
+        if bw_value != 255:
+            print(bw_value)
+        grayscale_data.append(bw_value)
+    print(f"Grayscale data={grayscale_data}")
     grayscale.putdata(grayscale_data)
+    # alpha_data: List[int] = [0 for i in range(len(grayscale_data))]
+    # grayscale.putalpha(alpha_data)
     return grayscale
 
 
@@ -103,6 +209,7 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
     EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
     filename = image_single_color_channel_filename(img_url=img_url, color=color)
     filepath = EXTRACTED_CACHE / filename
+    print(f"{filepath=}")
 
     if color == "joined":
         if not img_url.startswith("file://"):
@@ -112,7 +219,7 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
         filepath.write_bytes(x)
         return str(filepath)
 
-    if should_download_to_cache(filepath):
+    if True or should_download_to_cache(filepath):
         try:
             url = urllib.parse.urlparse(img_url)
             src_filename = f"/tmp/src.{Path(url.path).suffix}"
@@ -124,6 +231,7 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
                 red_image.save(str(filepath))
             elif color == "black":
                 black_image = extract_black_and_gray(src=src_image)
+                print(f"Writing black file {str(filepath)}...")
                 black_image.save(str(filepath))
         except Exception as ex:
             print(f"Warning: Could not extract color channel from {img_url}")
@@ -136,7 +244,12 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
 
 
 if __name__ == "__main__":
-    src_filename = "assets/avatars/joined/other.png"
+    src_filename = "02n@2x_cloudy_sun.png"
     src_image = Image.open(src_filename)
-    breakpoint()
+    # outline_image = outline_grays(src=src_image)
+    # outline_image.save("outlined_image.png")
     black_image = extract_black_and_gray(src=src_image)
+    for i in range(100):
+        if not Path(f"{i}.png").exists():
+            break
+    black_image.save(f"{i}.png")

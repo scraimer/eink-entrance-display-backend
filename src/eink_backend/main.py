@@ -350,7 +350,7 @@ async def eink(color: str, at: Optional[str] = None):
     if at:
         now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
     # always render "joined", since it's for dev work
-    if color == "joined":
+    if color == "joined" or color == "black":
         render_one_color(color=color, now=now)
     image_path = get_filename(color=color)
     if not image_path.exists():
@@ -372,3 +372,14 @@ async def read_image_from_cache(filename: str):
             status_code=404,
             detail="The requested image could not be found.",
         )
+
+
+from . import render
+
+
+@app.get("/test-make-image", response_class=FileResponse)
+async def read_image_from_cache():
+    path = render.image_extract_color_channel(
+        img_url="http://openweathermap.org/img/wn/03d@2x.png", color="black"
+    )
+    return path
