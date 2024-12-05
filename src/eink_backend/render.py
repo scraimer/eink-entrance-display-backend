@@ -165,8 +165,6 @@ def gray_to_black_or_white(
         black = _check_if_dithering_pattern_would_give_black(
             x=x, y=y, gray_level=gray_level
         )
-        ### NOCOMMIT XXX TODO
-        # black = gray_level == 4
         return BLACK if not black else WHITE
     return WHITE
 
@@ -193,10 +191,7 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
         y = int(i / src.width)
         alpha = alpha_data[i] if alpha_data else 100
         (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
-        # print((h, s, v))
         bw_value = gray_to_black_or_white(h=h, s=s, v=v, x=x, y=y, alpha=alpha)
-        if bw_value != 255:
-            print(bw_value)
         grayscale_data.append(bw_value)
     print(f"Grayscale data={grayscale_data}")
     grayscale.putdata(grayscale_data)
