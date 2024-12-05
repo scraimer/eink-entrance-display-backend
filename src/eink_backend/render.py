@@ -193,7 +193,6 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
         (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
         bw_value = gray_to_black_or_white(h=h, s=s, v=v, x=x, y=y, alpha=alpha)
         grayscale_data.append(bw_value)
-    print(f"Grayscale data={grayscale_data}")
     grayscale.putdata(grayscale_data)
     # alpha_data: List[int] = [0 for i in range(len(grayscale_data))]
     # grayscale.putalpha(alpha_data)
