@@ -220,11 +220,14 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
             print(f"Downloading {img_url}")
             urllib.request.urlretrieve(img_url, src_filename)
             src_image = Image.open(src_filename)
+            # There's a lot of empty white space in the images, crop just the middle 80x80
+            crop_area = (10, 10, 90, 90)
+            cropped_image = src_image.crop(crop_area)
             if color == "red":
-                red_image = extract_red(src=src_image)
+                red_image = extract_red(src=cropped_image)
                 red_image.save(str(filepath))
             elif color == "black":
-                black_image = extract_black_and_gray(src=src_image)
+                black_image = extract_black_and_gray(src=cropped_image)
                 print(f"Writing black file {str(filepath)}...")
                 black_image.save(str(filepath))
         except Exception as ex:

@@ -380,6 +380,8 @@ from . import render
 @app.get("/test-make-image", response_class=FileResponse)
 async def read_image_from_cache():
     path = render.image_extract_color_channel(
-        img_url="http://openweathermap.org/img/wn/03d@2x.png", color="black"
+        img_url="https://openweathermap.org/img/wn/02n@2x.png",
+        # img_url="http://openweathermap.org/img/wn/03d@2x.png",
+        color="black"
     )
     return path
