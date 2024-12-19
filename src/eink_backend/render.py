@@ -2,18 +2,28 @@ import colorsys
 from dataclasses import dataclass
 import datetime
 from pathlib import Path
-from typing import List, Tuple
-from PIL import Image
+from typing import Any, Dict, List, Optional, Set, Tuple
+import re
+from PIL import Image, ImageDraw, ImageFont
+import os
+import shutil
+from string import Template
+import subprocess
 import textwrap
 import traceback
 import urllib
 
-from pprint import pprint
+from eink_backend.collect import PageData, collect_all_values_of_data
+
+from . import my_calendar, weather, efrat_zmanim, chores, seating
 
 """How much to indent HTML code."""
 INDENT = "    "
 
 EXTRACTED_CACHE = Path("/image-cache")
+
+root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
+"""This should point to the parent of the `src` directory"""
 
 
 def image_single_color_channel_filename(img_url: str, color: str) -> str:
@@ -238,6 +248,159 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
         print(f"Using {str(filepath)} from cache")
 
     return str(filepath)
+
+
+def untaint_filename(filename: str) -> str:
+    return re.sub(r"[^a-zA-Z_-]", "_", filename)
+
+
+def image_to_mono(src: Image.Image):
+    THRESH = 200
+    fn = lambda x: 255 if x > THRESH else 0
+    return src.convert("L").point(fn, mode="1")
+
+
+def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
+    src_image = Image.open(src)
+    mono_image = image_to_mono(src_image)
+    mono_image.save(dest)
+
+
+def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -> None:
+    DEVICE_HEIGHT = 880
+    DEVICE_WIDTH = 528
+
+    image = Image.open(file_to_modify)
+    if image.width > DEVICE_WIDTH or image.height > DEVICE_HEIGHT:
+        text = "Image too large."
+        if image.width > DEVICE_WIDTH:
+            text += (
+                f" Width of image is {image.width}, exceeding max of {DEVICE_WIDTH}."
+            )
+        if image.height > DEVICE_HEIGHT:
+            text += (
+                f" Height of image is {image.height}, exceeding max of {DEVICE_HEIGHT}."
+            )
+        print(text)
+        font_size = 10
+        font = ImageFont.truetype(str(root_dir / "assets/fonts/arial.ttf"), font_size)
+        draw = ImageDraw.Draw(image)
+        left, top, right, bottom = font.getbbox(text)
+        text_width = bottom - top
+        text_height = right - left
+        text_x = DEVICE_WIDTH - text_width
+        text_y = DEVICE_HEIGHT - text_height
+
+        text_fill = (0, 0, 0)
+        if color in ("red", "black"):
+            text_fill = 0
+        draw.text((text_x, text_y), text, font=font, fill=text_fill)
+        draw.text((text_x, text_y), text, font=font, fill=text_fill)
+        cropped_image = image.crop((0, 0, DEVICE_WIDTH, DEVICE_HEIGHT))
+        cropped_image.save(file_to_modify)
+
+
+def render_html_template_single_color(
+    color: str, html_content: str, out_dir: Path
+) -> Path:
+    content_filename = "/tmp/content.html"
+    Path(content_filename).write_text(data=html_content, encoding="utf-8")
+    out_firefox_filename = f"/app/tmp/firefox-{color}.png"
+    p = subprocess.run(
+        [
+            "firefox",
+            "--screenshot",
+            out_firefox_filename,
+            "--window-size=528",
+            f"file://{content_filename}",
+        ],
+        timeout=60,
+    )
+    p.check_returncode()
+    p = subprocess.run(["chmod", "666", out_firefox_filename])
+    p.check_returncode()
+
+    out_path = out_dir / f"{color}.png"
+    make_mono = color in ("red", "black")
+    if make_mono:
+        convert_png_to_mono_png(src=out_firefox_filename, dest=out_path)
+    else:
+        shutil.copy(src=out_firefox_filename, dst=str(out_path))
+    clip_image_to_device_dimensions_in_place(file_to_modify=out_path, color=color)
+    return out_path
+
+
+def load_template_from_file(file: Path) -> Tuple[Template, List[str]]:
+    template_text = file.read_text(encoding="utf-8")
+    p = re.compile("\\$[a-z_]+")
+    template_required_keys = set(p.findall(template_text)) - set(["$color"])
+    template = Template(template_text)
+    return (template, template_required_keys)
+
+
+def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
+    FRIDAY = 4
+    SATURDAY = 5
+
+    wkday = now.weekday()
+    hour = now.hour
+
+    # Default template is shabbat
+    template_path = Path("/app/assets/layout-shabbat.html")
+    # Friday until 16:00, use the chore template
+    if wkday == FRIDAY and hour < 16:
+        template_path = Path("/app/assets/layout-choreday.html")
+    # Friday and Shabbat, around meal-time, show seating layout
+    if (wkday == FRIDAY and hour >= 16) or (
+        wkday == SATURDAY and (hour >= 10 and hour <= 13)
+    ):
+        template_path = Path("/app/assets/layout-shabbat-seating.html")
+    return load_template_from_file(file=template_path)
+
+
+def find_missing_template_keys(
+    all_values: Dict[str, Any], template_required_keys: Set[Any]
+):
+    dollar_keys = set([f"${x}" for x in all_values.keys()])
+    missing_keys = template_required_keys - dollar_keys
+    if missing_keys:
+        print(
+            "Warning: the following template variable missing.\n"
+            "They will be replaced by a placeholder:\n" + str(missing_keys)
+        )
+        # raise KeyError("Required keys are missing:", missing_keys)
+        # Fill in the missing keys, to avoid failing
+    return missing_keys
+
+
+def generate_html_content(
+    color: str, collected_data: PageData, now: datetime.datetime
+) -> str:
+    try:
+        all_values = collect_all_values_of_data(
+            zmanim=collected_data.zmanim,
+            weather_forecast=collected_data.weather_forecast,
+            calendar_content=collected_data.calendar_content,
+            chores_content=collected_data.chores_content,
+            seating_content=collected_data.seating_content,
+            color=color,
+            now=now,
+        )
+    # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
+    except Exception as ex:
+        print("Warning: Could not collect all values of data.")
+        # TODO: indent the exception under the warning
+        traceback.print_exc()
+        all_values = {"Error": str(ex)}
+    (template, template_required_keys) = load_template_by_time(now=now)
+    missing_keys = find_missing_template_keys(
+        all_values=all_values, template_required_keys=template_required_keys
+    )
+    # Fill in missing keys
+    for k in missing_keys:
+        all_values[k[1:]] = "[ERR]"
+    all_values["color"] = color
+    return template.substitute(**all_values)
 
 
 if __name__ == "__main__":

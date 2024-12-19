@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, timedelta, datetime, time
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -11,7 +12,10 @@ class ShabbatZmanim:
     times: Dict[str, Union[str, datetime]]
 
 
-ZMANIM_DB_SRC = "assets/efrat_zmanim.json"
+root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
+"""This should point to the parent of the `src` directory"""
+
+ZMANIM_DB_SRC = f"{root_dir}/assets/efrat_zmanim.json"
 
 
 def find_zmanim_for_day(day: date, efrat_zmanim: Dict[str, Union[str, int]]):
