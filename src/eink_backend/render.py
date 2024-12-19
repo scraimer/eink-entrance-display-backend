@@ -42,7 +42,7 @@ def extract_red(src: Image.Image) -> Image.Image:
     if len(color_channels) == 4:
         red_img, green_img, blue_img, alpha_img = color_channels
     elif len(color_channels) == 3:
-        red_img, green_img, blue_img, alpha_img = color_channels
+        red_img, green_img, blue_img = color_channels
         alpha_img = None
     else:
         print(f"Found {len(color_channels)} color channels in image, expected 3 or 4.")

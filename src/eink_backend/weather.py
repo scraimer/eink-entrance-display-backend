@@ -455,8 +455,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
     hourlies_to_display = [next_hourly] + matching_hourlies
 
     hours_template = Template(
-        """
-        <li>
+        """<li>
         <ul>
             <li class="black hour">$hour_modified</li>
             <li class="black temp">$feels_like_rounded&deg;C</li>
@@ -498,7 +497,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
                     "night" if hourly.timestamp.hour > 17 else "day"
                 ]["image"],
                 color=color,
-            ),
+            ).strip(),
             feels_like_rounded=round(hourly.apparent_temperature),
             color=color,
         )
@@ -521,8 +520,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
         weather_warning_icon = x
 
     tomrrow_template = Template(
-        """
-        <li>
+        """<li>
         <ul>
             <li class="black hour">$tomorrow_day_of_week</li>
             <li class="black temp">$tomorrow_min_max&deg;C</li>
@@ -542,7 +540,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
         ),
         tomorrow_min_max=f"{round(weather_forecast.tomorrow.apparent_temperature_min)}-{round(weather_forecast.tomorrow.apparent_temperature_max)}",
         color=color,
-    )
+    ).strip()
 
     return f"""
     <span class="black">Outside temperature: </span>
@@ -553,10 +551,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
     <br />
     <span>
          <div id="weather-table">
-            <ul>
-                {hours_str}
-                {tomorrow_str}
-            </ul>
+            <ul>{hours_str}{tomorrow_str}</ul>
         </div>
     </span>
     """
