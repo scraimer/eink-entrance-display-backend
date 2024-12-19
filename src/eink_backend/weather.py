@@ -520,7 +520,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
         weather_warning_icon = x
 
     tomrrow_template = Template(
-        """<li>
+        """<li class="tomorrow">
         <ul>
             <li class="black hour">$tomorrow_day_of_week</li>
             <li class="black temp">$tomorrow_min_max&deg;C</li>
