@@ -10,6 +10,8 @@ import requests
 from . import render
 from .config import config
 
+WMO_IMAGE_CROP_AREA = (10, 10, 90, 90)
+"""There's a lot of empty white space in the images, crop just the middle 80x80"""
 
 WMO_CODES = {
     "0": {
@@ -497,6 +499,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
                     "night" if hourly.timestamp.hour > 17 else "day"
                 ]["image"],
                 color=color,
+                crop_area=WMO_IMAGE_CROP_AREA,
             ).strip(),
             feels_like_rounded=round(hourly.apparent_temperature),
             color=color,
@@ -537,6 +540,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
                 "image"
             ],
             color=color,
+            crop_area=WMO_IMAGE_CROP_AREA,
         ),
         tomorrow_min_max=f"{round(weather_forecast.tomorrow.apparent_temperature_min)}-{round(weather_forecast.tomorrow.apparent_temperature_max)}",
         color=color,

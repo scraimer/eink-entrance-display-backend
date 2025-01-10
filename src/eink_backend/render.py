@@ -2,7 +2,7 @@ import colorsys
 from dataclasses import dataclass
 import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from PIL import Image
 import textwrap
 import traceback
@@ -39,6 +39,9 @@ def rgb_to_hsv(src):
 
 def extract_red(src: Image.Image) -> Image.Image:
     color_channels = src.split()
+    red_img: Image.Image = None
+    green_img: Image.Image = None
+    blue_img: Image.Image = None
     if len(color_channels) == 4:
         red_img, green_img, blue_img, alpha_img = color_channels
     elif len(color_channels) == 3:
@@ -55,8 +58,6 @@ def extract_red(src: Image.Image) -> Image.Image:
         alpha_data = None
     grayscale = Image.new("LA", (src.width, src.height), 0)
     assert (alpha_data is None) or (len(red_data) == len(alpha_data))
-    THRESH = 180
-    fn = lambda x: 255 if x < THRESH else 0
     grayscale_data = []
     for i in range(0, len(red_data)):
         (h, s, v) = rgb_to_hsv((red_data[i], green_data[i], blue_data[i]))
@@ -64,7 +65,6 @@ def extract_red(src: Image.Image) -> Image.Image:
             grayscale_data.append(0)
         else:
             grayscale_data.append(255)
-    # grayscale_data = [fn(x) for x in red_data]
     grayscale.putdata(grayscale_data)
     if alpha_img:
         grayscale.putalpha(alpha_img)
@@ -199,7 +199,9 @@ def extract_black_and_gray(src: Image.Image) -> Image.Image:
     return grayscale
 
 
-def image_extract_color_channel(img_url: str, color: str) -> str:
+def image_extract_color_channel(
+    img_url: str, color: str, crop_area: Optional[Tuple[int, int, int, int]] = None
+) -> str:
     EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
     filename = image_single_color_channel_filename(img_url=img_url, color=color)
     filepath = EXTRACTED_CACHE / filename
@@ -220,14 +222,17 @@ def image_extract_color_channel(img_url: str, color: str) -> str:
             print(f"Downloading {img_url}")
             urllib.request.urlretrieve(img_url, src_filename)
             src_image = Image.open(src_filename)
-            # There's a lot of empty white space in the images, crop just the middle 80x80
-            crop_area = (10, 10, 90, 90)
-            cropped_image = src_image.crop(crop_area)
+            if crop_area:
+                src_image = src_image.crop(crop_area)
+
+            if src_image.mode not in ("RGB", "RGBA"):
+                src_image = src_image.convert("RGBA")
+
             if color == "red":
-                red_image = extract_red(src=cropped_image)
+                red_image = extract_red(src=src_image)
                 red_image.save(str(filepath))
             elif color == "black":
-                black_image = extract_black_and_gray(src=cropped_image)
+                black_image = extract_black_and_gray(src=src_image)
                 print(f"Writing black file {str(filepath)}...")
                 black_image.save(str(filepath))
         except Exception as ex:
