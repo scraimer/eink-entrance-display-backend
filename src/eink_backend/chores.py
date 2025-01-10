@@ -103,7 +103,7 @@ def get_chores_from_spreadsheet() -> List[Chore]:
 
     def parse_record(src: Dict[str, Any]) -> Optional[Chore]:
         frequency_in_weeks = 1
-        due=date.today()
+        due = date.today()
 
         try:
             frequency_in_weeks = int(src["Frequency in Weeks"])
@@ -122,7 +122,7 @@ def get_chores_from_spreadsheet() -> List[Chore]:
                 f"\"{src['Due Date']}\" for chore \"{src['Name']}\""
             )
             return None
-            
+
         return Chore(
             due=due,
             name=src["Name"],
@@ -172,9 +172,10 @@ def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
 
 def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
     # Sort the chores:
-    # - assigned items are later
-    # - otherwise, sort by how often (more often, i.e. lower between weeks is sooner)
-    chores.sort(key=lambda c: (not not c.assignee, c.frequency_in_weeks))
+    # - unassigned items are last
+    # - by assignee name
+    # - sort by how often (more often, i.e. lower between weeks is sooner)
+    chores.sort(key=lambda c: (not c.assignee, c.assignee, c.frequency_in_weeks))
 
     chore_template = Template(
         textwrap.dedent(
