@@ -121,19 +121,47 @@ def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool
     return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
 
 
-def omer_count(today: datetime.date):
-    today_heb = dates.HebrewDate.from_pydate(today)
-    OMER_ZERO = dates.HebrewDate(year=today_heb.year, month=1, day=15).to_pydate()
-    if today <= OMER_ZERO:
+def omer_count(now: datetime.datetime, now_is_after_starlight: bool): 
+
+    def calc_omer_count(today: datetime.date) -> Optional[int]:
+        today_heb = dates.HebrewDate.from_pydate(today)
+        OMER_ZERO = dates.HebrewDate(year=today_heb.year, month=1, day=15).to_pydate()
+        if today <= OMER_ZERO:
+            return None
+        delta = today - OMER_ZERO
+        MAX_OMER = 49
+        if delta.days <= 0 or delta.days > MAX_OMER:
+            return None
+        return delta.days
+
+    today = now.date()
+    LAST_SECOND = datetime.time(hour=23, minute=59, second=59)
+    if now_is_after_starlight and now.time() <= LAST_SECOND:
+        # show the count for tomorrow, since it's already time for it
+        today = today + datetime.timedelta(days=1)
+    count = calc_omer_count(today)
+    if not count:
         return None
-    delta = today - OMER_ZERO
-    MAX_OMER = 49
-    if delta.days <= 0 or delta.days > MAX_OMER:
-        return None
-    if delta.days > 7:
-        return f"{delta.days // 7} * 7 + {delta.days % 7} = {delta.days} בעומר "
-    else:
-        return f"{delta.days} בעומר"
+    display_text = f"{count} בעומר"
+    if count > 7:
+        display_text = f"{count // 7} * 7 + {count % 7} = {count} בעומר "
+    if not now_is_after_starlight:
+        display_text = "(אתמול) " + display_text
+    return display_text
+
+
+def is_now_after_starlight(now: datetime.datetime, tzet_shabbat: Optional[str]) -> bool:
+    starlight_estimate_s = tzet_shabbat
+    if not starlight_estimate_s:
+        return False
+    print(f"'{starlight_estimate_s=}'")
+    hour_s = starlight_estimate_s[0:2]
+    minute_s = starlight_estimate_s[3:5]
+    starlight = datetime.time(hour=int(hour_s), minute=int(minute_s))
+    print(f"'{starlight=}'")
+    if now.time() > starlight:
+        return True
+    return False
 
 
 def collect_all_values_of_data(
@@ -146,7 +174,6 @@ def collect_all_values_of_data(
     now: datetime.datetime,
 ) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.from_pydate(now.date())
-    omer = omer_count(today=now.date())
     try:
         parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
         if not parasha and zmanim and zmanim.name:
@@ -161,6 +188,9 @@ def collect_all_values_of_data(
         # TODO: indent
         traceback.print_exc()
         zmanim_dict = {"Error": str(ex)}
+
+    now_is_after_starlight = is_now_after_starlight(now=now, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
+    omer = omer_count(now=now, now_is_after_starlight=now_is_after_starlight)
 
     weather_dict = {"weather_report": ""}
     try:
