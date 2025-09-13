@@ -1,0 +1,10 @@
+@import url("/css/common.css");
+
+#calendar {
+    width: 100%;
+}
+
+#calendar .day {
+    width: 49%;
+}
+

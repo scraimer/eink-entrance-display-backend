@@ -1,0 +1,16 @@
+@import url("/css/common.css");
+
+#calendar {
+    width: 50%;
+}
+
+/* Hide all but the first day */
+#calendar .day:nth-child(n+2) {
+    display: none;
+}
+
+.show-only-red #seating .black,
+.show-only-black #seating .red {
+    display: none !important;
+}
+

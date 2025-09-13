@@ -1,0 +1,77 @@
+@import url("/css/common.css");
+
+#calendar {
+    width: 50%;
+}
+
+#calendar .day {
+    width: 100%;
+}
+
+/* Hide all but the first day */
+#calendar .day:nth-child(n+2) {
+    display: none;
+}
+
+#chores {
+    /*width: 100%;*/
+    height: 440px;
+    overflow: hidden;
+    margin-top: 1px;
+}
+
+#chores ul {
+    padding: 0;
+    margin: 0;
+}
+
+#chores li {
+    list-style: none;
+}
+
+#chores .chore {
+    margin-bottom: 2px;
+    font-size: 23px;
+    display: inline-block;
+    text-wrap: nowrap;
+    vertical-align: top;
+    width: 100%;
+    overflow: ellipsis;
+}
+
+#chores .chore .name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    width: 230px;
+    display: inline-block;
+    height: 24px;
+    vertical-align: bottom;
+    margin-bottom: 2px;
+}
+
+#chores .chore.assigned .name {
+    /* text-decoration: line-through; */
+}
+
+#chores .chore ul {
+    height: 26px;
+}
+
+#chores .chore .avatar {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+}
+
+#chores .chore .avatar img {
+    width: 24px;
+    height: 24px;
+}
+
+#chores .chore .assignee {
+    display: none;
+    /* font-size: 10px;
+    float: right; */
+}
+

@@ -403,6 +403,17 @@ async def read_image_from_cache(filename: str):
             detail="The requested image could not be found.",
         )
 
+@app.get("/css/{filename}", response_class=FileResponse)
+async def read_image_from_cache(filename: str):
+    file = Path(f"/app/assets/{filename}")
+    if file.exists():
+        return str(file)
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="The requested image could not be found.",
+        )
+
 
 from . import render
 
