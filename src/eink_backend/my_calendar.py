@@ -85,9 +85,10 @@ def calendar_render(events: List[Dict[str, Any]]):
     for event in events:
         start_s = event["start"].get("dateTime", event["start"].get("date"))
         start = datetime.datetime.fromisoformat(start_s)
+        summary = event.get("summary", "-MISSING SUMMARY-")
         event_out = {
             "start_hour": start.strftime("%H:%M"),
-            "summary": event["summary"],
+            "summary": summary,
         }
         day_key = start.strftime("%A %-d/%b")
         if day_key not in by_days:
