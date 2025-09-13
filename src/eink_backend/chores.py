@@ -73,23 +73,25 @@ from . import config, render
 
 
 @dataclass
+class Assignee:
+    order: int
+    name: str
+    avatar: str
+
+
+@dataclass
 class Chore:
     due: date
     name: str
     assignee: str
     frequency_in_weeks: int
+    assignee_obj: Assignee
 
 
 @dataclass
 class ChoreData:
     chores: List[Chore]
     error: Optional[str] = None
-
-
-@dataclass
-class Assignee:
-    name: str
-    avatar: str
 
 
 def get_chores_from_spreadsheet() -> List[Chore]:
@@ -157,12 +159,12 @@ def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
     first_name = raw_assignee.split(" ")[0].lower()
     DEFAULT = "DEFAULT"
     TABLE = {
-        "ariel": Assignee(name="Ariel", avatar="ariel.png"),
-        "asaf": Assignee(name="Asaf", avatar="asaf.png"),
-        "amalya": Assignee(name="Amalya", avatar="amalya.png"),
-        "alon": Assignee(name="Alon", avatar="alon.png"),
-        "aviv": Assignee(name="Aviv", avatar="aviv.png"),
-        DEFAULT: Assignee(name="Other", avatar="other.png"),
+        "ariel": Assignee(order=0, name="Ariel", avatar="ariel.png"),
+        "asaf": Assignee(order=1, name="Asaf", avatar="asaf.png"),
+        "amalya": Assignee(order=2, name="Amalya", avatar="amalya.png"),
+        "alon": Assignee(order=3, name="Alon", avatar="alon.png"),
+        "aviv": Assignee(order=4, name="Aviv", avatar="aviv.png"),
+        DEFAULT: Assignee(order=5, name="Other", avatar="other.png"),
     }
     if first_name in TABLE:
         return TABLE[first_name]
@@ -171,11 +173,18 @@ def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
 
 
 def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
+    filtered_chores: List[Chore] = []
+    for chore in chores:
+        if chore.due > today:
+            # print("SKIPPING item in the future: " + str(chore))
+            continue
+        chore.assignee_obj = normalize_assigneed(chore.assignee)
+
     # Sort the chores:
     # - unassigned items are last
     # - by assignee name
     # - sort by how often (more often, i.e. lower between weeks is sooner)
-    chores.sort(key=lambda c: (not c.assignee, c.assignee, c.frequency_in_weeks))
+    filtered_chores.sort(key=lambda c: (not c.assignee, c.assignee_obj.order, c.frequency_in_weeks))
 
     chore_template = Template(
         textwrap.dedent(
@@ -192,7 +201,7 @@ def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
 
     today = now.date()
     chores_str = ""
-    for chore in chores:
+    for chore in filtered_chores:
         if chore.due > today:
             # print("SKIPPING item in the future: " + str(chore))
             continue
