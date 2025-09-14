@@ -1,3 +1,4 @@
+from bs4 import BeautifulSoup
 from dataclasses import dataclass
 import datetime
 import shutil
@@ -250,8 +251,38 @@ def collect_all_values_of_data(
     return all_values
 
 
+def replace_css_link_with_css_content(html_content:str) -> str:
+    new_content = ""
+    lines = html_content.splitlines()
+    for line in lines:
+        if "<link" not in line:
+            new_content += line + "\n"
+            continue
+
+        if 'rel="stylesheet"' not in line:
+            print("Warning: Found 'link' tag that isn't a stylesheet:\n\t" + line)
+            continue
+
+        soup = BeautifulSoup(line, 'html.parser')
+        link_tag = soup.find('link')
+        href_value = link_tag.get('href')
+        css_path:Optional[Path] = None
+        href_path = Path(href_value)
+        if href_path.parent == Path("/css"):
+            css_path = Path("/app/assets/" + href_path.name)
+        else:
+            raise FileNotFoundError(href_value)
+        if not css_path.exists():
+            raise FileNotFoundError(css_path)
+        css_content = css_path.read_text(encoding="utf-8")
+        css_in_html = f"\n<!-- {str(href_value)} -->\n<style>\n{css_content}\n</style>\n"
+        new_content += css_in_html
+    return new_content
+
+
 def load_template_from_file(file: Path) -> Tuple[Template, List[str]]:
     template_text = file.read_text(encoding="utf-8")
+    template_text = replace_css_link_with_css_content(template_text)
     p = re.compile("\\$[a-z_]+")
     template_required_keys = set(p.findall(template_text)) - set(["$color"])
     template = Template(template_text)
@@ -403,15 +434,15 @@ async def read_image_from_cache(filename: str):
             detail="The requested image could not be found.",
         )
 
-@app.get("/css/{filename}", response_class=FileResponse)
-async def read_image_from_cache(filename: str):
+@app.get("/css/{filename}")
+async def read_css_file(filename: str):
     file = Path(f"/app/assets/{filename}")
     if file.exists():
-        return str(file)
+        return FileResponse(str(file), media_type="text/css")
     else:
         raise HTTPException(
             status_code=404,
-            detail="The requested image could not be found.",
+            detail="The requested CSS file could not be found.",
         )
 
 

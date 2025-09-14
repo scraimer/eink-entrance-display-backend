@@ -121,25 +121,6 @@ h2 #omer {
     display: block;
 }
 
-.show-only-red #weather-table .tomorrow {
-    /* Show the border when rendering red */
-    border-left: 1px dashed black;
-
-}
-
-.show-only-black #weather-table .tomorrow {
-    /* Hide the border when rendering black */
-    border-left: 1px dashed white;
-
-}
-
-#weather-table li.hour .tomorrow {
-    display: block;
-    font-size: 10px;
-    font-weight: bold;
-    line-height: 10px;
-}
-
 #weather-table .min_max_notes {
     display: block;
     font-size: 12px;
@@ -187,6 +168,32 @@ h2 #omer {
     display: block;
     overflow: hidden;
 }
+
+.show-only-red #weather-table .tomorrow {
+    /* Show the border when rendering red */
+    border-left: 1px dashed black;
+
+}
+
+.show-only-black #weather-table .tomorrow {
+    /* Hide the border when rendering black */
+    border-left: 1px dashed white;
+
+}
+
+/*
+#weather-table li.tomorrow {
+    display: block;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 10px;
+}
+
+#weather-table li.tomorrow .temp {
+    font-size: 25px;
+    line-height: 25px;
+}
+*/
 
 #current-weather-warning-icon img {
     width: 40px;
@@ -266,5 +273,4 @@ h2 #omer {
 .show-only-red .red {
     color: black !important;
 }
-
 
