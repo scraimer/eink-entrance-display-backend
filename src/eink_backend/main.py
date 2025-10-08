@@ -175,20 +175,23 @@ def collect_all_values_of_data(
     now: datetime.datetime,
 ) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.from_pydate(now.date())
-    try:
-        parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
-        if not parasha and zmanim and zmanim.name:
-            parasha = zmanim.name
-        zmanim_dict = {
-            "parasha": parasha,
-            **{k: v for k, v in zmanim.times.items()},
-        }
-    # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
-    except Exception as ex:
-        print("Warning: Could not collect zmanim data.")
-        # TODO: indent
-        traceback.print_exc()
-        zmanim_dict = {"Error": str(ex)}
+    if zmanim:
+        try:
+            parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
+            if not parasha and zmanim and zmanim.name:
+                parasha = zmanim.name
+            zmanim_dict = {
+                "parasha": parasha,
+                **{k: v for k, v in zmanim.times.items()},
+            }
+        # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
+        except Exception as ex:
+            print(f"Warning: Could not collect zmanim data. Exception: {ex}")
+            # TODO: indent
+            traceback.print_exc()
+            zmanim_dict = {"Error": str(ex)}
+    else:
+        print("Warning: no zmanim data available.")
 
     now_is_after_starlight = is_now_after_starlight(now=now, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
     omer = omer_count(now=now, now_is_after_starlight=now_is_after_starlight)
