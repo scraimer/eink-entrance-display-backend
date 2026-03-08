@@ -114,6 +114,12 @@ h2 #omer {
     width: 118px;
 }
 
+#weather-table>ul>li:last-child {
+    width: 165px;
+    overflow: hidden;
+}
+
+
 #weather-table li.hour {
     height: 50px;
     width: 100%;
@@ -128,7 +134,7 @@ h2 #omer {
 }
 
 #weather-table li.temp {
-    font-size: 40px;
+    font-size: 35px;
     line-height: 40px;
     height: 40px;
     font-weight: bold;
