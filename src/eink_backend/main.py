@@ -15,7 +15,7 @@ import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
-from . import my_calendar, weather, efrat_zmanim, chores, seating
+from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
 
 FRIDAY = 4
 SATURDAY = 5
@@ -26,6 +26,13 @@ out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+def startup_event():
+    """Initialize the database on startup and clean expired records."""
+    data_cache.init_db()
+    data_cache.clean_expired_records(older_than_days=30)
 
 
 @app.get("/")
@@ -378,11 +385,11 @@ class PageData:
 
 def collect_data(now: datetime.datetime):
     return PageData(
-        zmanim=efrat_zmanim.collect_data(now=now),
-        weather_forecast=weather.collect_data(now=now),
-        calendar_content=my_calendar.collect_data(),
-        chores_content=chores.collect_data(now=now),
-        seating_content=seating.collect_data(now=now),
+        zmanim=data_cache.cache_or_fetch("zmanim", lambda: efrat_zmanim.collect_data(now=now), now=now),
+        weather_forecast=data_cache.cache_or_fetch("weather", lambda: weather.collect_data(now=now), now=now),
+        calendar_content=data_cache.cache_or_fetch("calendar", lambda: my_calendar.collect_data(), now=now),
+        chores_content=data_cache.cache_or_fetch("chores", lambda: chores.collect_data(now=now), now=now),
+        seating_content=data_cache.cache_or_fetch("seating", lambda: seating.collect_data(now=now), now=now),
     )
 
 
