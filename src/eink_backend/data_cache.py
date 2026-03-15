@@ -5,15 +5,6 @@ from pathlib import Path
 from typing import Optional, TypeVar, Callable
 import logging
 
-logger = logging.getLogger(__name__)
-# Configure logger to print to screen if not already configured
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
-
 # Database path in the app directory
 DB_PATH = Path("/app/data_cache.db")
 
@@ -68,7 +59,7 @@ def clean_expired_records(older_than_days: int = 30):
     conn.close()
 
     if deleted_count > 0:
-        logger.info(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
+        print(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
 
 
 def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
@@ -112,7 +103,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
         now: The reference time to calculate expiration. Defaults to current time.
     """
     if data_type not in EXPIRATION_HOURS:
-        logger.warning(f"Unknown data type: {data_type}")
+        print(f"Warning: Unknown data type: {data_type}")
         return
 
     conn = sqlite3.connect(str(DB_PATH))
@@ -137,7 +128,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     conn.commit()
     conn.close()
 
-    logger.debug(f"Cached {data_type} data, expires at {expiration.isoformat()}")
+    print(f"DEBUG: Cached {data_type} data, expires at {expiration.isoformat()}")
 
 
 def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.datetime) -> T:
@@ -157,11 +148,11 @@ def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.date
     cached_result = get_cached_data(data_type, now=now)
     if cached_result:
         data, timestamp = cached_result
-        logger.info(f"Using cached {data_type} data from {timestamp.isoformat()}")
+        print(f"INFO: Using cached {data_type} data from {timestamp.isoformat()}")
         return data
 
     # Fetch new data
-    logger.info(f"Fetching fresh {data_type} data")
+    print(f"INFO: Fetching fresh {data_type} data")
     data = fetch_fn()
 
     # Save to cache if data is not None

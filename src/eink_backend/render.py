@@ -205,7 +205,6 @@ def image_extract_color_channel(
     EXTRACTED_CACHE.mkdir(exist_ok=True, parents=True)
     filename = image_single_color_channel_filename(img_url=img_url, color=color)
     filepath = EXTRACTED_CACHE / filename
-    print(f"{filepath=}")
 
     if color == "joined":
         if not img_url.startswith("file://"):
@@ -219,7 +218,6 @@ def image_extract_color_channel(
         try:
             url = urllib.parse.urlparse(img_url)
             src_filename = f"/tmp/src.{Path(url.path).suffix}"
-            print(f"Downloading {img_url}")
             urllib.request.urlretrieve(img_url, src_filename)
             src_image = Image.open(src_filename)
             if crop_area:
