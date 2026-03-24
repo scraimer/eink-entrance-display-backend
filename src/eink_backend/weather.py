@@ -516,11 +516,14 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
     weather_warning_icon = ""
     JACKET_WEATHER_TEMPERATURE = 13
     if weather_forecast.current.apparent_temperature <= JACKET_WEATHER_TEMPERATURE:
-        x = f"""
+        jacket_icon_url = render.image_extract_color_channel(
+            img_url="file:///app/assets/pic/jacket.png",
+            color=color,
+        )
+        weather_warning_icon = f"""
             <span id="current-weather-warning-icon">
-                <img src="/app/assets/pic/jacket-black.png" class="black" />
+                <img src="{jacket_icon_url}" class="black" />
             </span>"""
-        weather_warning_icon = x
 
     tomrrow_template = Template(
         """<li class="tomorrow">
