@@ -1,0 +1,2 @@
+1. YOU MUST read the file docs/architecture.md first to understand the architecture of the system. It contains important information about how the system is structured and how the different components interact with each other. This will help you write code that fits well within the existing architecture and follows the established patterns and conventions.
+2. Write professional Python code for python 3.12, like a Python expert would.
