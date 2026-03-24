@@ -1,9 +1,9 @@
+import logging
 import sqlite3
 import pickle
 import datetime
 from pathlib import Path
 from typing import Optional, TypeVar, Callable
-import logging
 
 # Database path in the app directory
 DB_PATH = Path("/app/data_cache.db")
@@ -19,6 +19,8 @@ EXPIRATION_HOURS = {
 
 T = TypeVar('T')
 
+_logger: logging.Logger = None
+"""This is the logger that the data_cache uses"""
 
 def _humanize_age(now: datetime.datetime, timestamp: datetime.datetime) -> str:
     """Return a compact human-readable age string."""
@@ -42,8 +44,11 @@ def _humanize_age(now: datetime.datetime, timestamp: datetime.datetime) -> str:
     return f"{days} {unit}"
 
 
-def init_db():
+def init_db(logger: logging.Logger):
     """Initialize the SQLite database with the required schema."""
+    global _logger
+    _logger = logger
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(str(DB_PATH))
@@ -81,7 +86,7 @@ def clean_expired_records(older_than_days: int = 30):
     conn.close()
 
     if deleted_count > 0:
-        print(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
+        _logger.info(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
 
 
 def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
@@ -125,7 +130,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
         now: The reference time to calculate expiration. Defaults to current time.
     """
     if data_type not in EXPIRATION_HOURS:
-        print(f"Warning: Unknown data type: {data_type}")
+        _logger.warning(f"Unknown data type: {data_type}")
         return
 
     conn = sqlite3.connect(str(DB_PATH))
@@ -150,7 +155,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     conn.commit()
     conn.close()
 
-    print(f"DEBUG: Cached {data_type} data, expires at {expiration.isoformat()}")
+    _logger.info(f"Cached {data_type} data, expires at {expiration.isoformat()}")
 
 
 def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.datetime) -> T:
@@ -165,17 +170,17 @@ def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.date
     Returns:
         The cached or freshly fetched data
     """
-    
+
     # Check if we have valid cached data
     cached_result = get_cached_data(data_type, now=now)
     if cached_result:
         data, timestamp = cached_result
         age = _humanize_age(now=now, timestamp=timestamp)
-        print(f"INFO: Using cached {data_type} data from {timestamp.isoformat()} ({age} old)")
+        _logger.info(f"Using cached {data_type} data from {timestamp.isoformat()} ({age} old)")
         return data
 
     # Fetch new data
-    print(f"INFO: Fetching fresh {data_type} data")
+    _logger.info(f"Fetching fresh {data_type} data")
     data = fetch_fn()
 
     # Save to cache if data is not None

@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 import datetime
+import logging
 import shutil
 from string import Template
 import subprocess
@@ -18,6 +20,20 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
 
+
+def _setup_logging():
+    """Configure logger to write to the screen."""
+    logger = logging.getLogger()
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
+_logger = _setup_logging()
+
 FRIDAY = 4
 SATURDAY = 5
 
@@ -26,14 +42,17 @@ root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI()
 
-
-@app.on_event("startup")
-def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Initialize the database on startup and clean expired records."""
-    data_cache.init_db()
+    data_cache.init_db(_logger)
     data_cache.clean_expired_records(older_than_days=30)
+    _logger.info("Init complete.")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/")
