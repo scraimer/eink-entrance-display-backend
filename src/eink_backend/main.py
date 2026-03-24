@@ -44,9 +44,6 @@ def untaint_filename(filename: str) -> str:
     return re.sub(r"[^a-zA-Z_-]", "_", filename)
 
 
-VALID_IMAGE_NAMES = ["red", "black", "joined"]
-
-
 def image_to_mono(src: Image.Image):
     THRESH = 200
     fn = lambda x: 255 if x > THRESH else 0
@@ -58,6 +55,10 @@ def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
     mono_image = image_to_mono(src_image)
     mono_image.save(dest)
 
+VALID_COLOR_NAMES = ["red", "black", "joined"]
+
+def is_valid_color(color: str) -> bool:
+    return color in VALID_COLOR_NAMES
 
 def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -> None:
     DEVICE_HEIGHT = 880
@@ -205,6 +206,7 @@ def collect_all_values_of_data(
 
     weather_dict = {"weather_report": ""}
     try:
+        # print(f"Collecting weather report with forecast: {weather_forecast}")
         weather_report = weather.weather_report(
             weather_forecast=weather_forecast, color=color
         )
@@ -366,10 +368,10 @@ def render_html_template(color: str, now: datetime.datetime):
 
 
 def get_filename(color: str) -> Path:
-    if color not in VALID_IMAGE_NAMES:
+    if not is_valid_color(color):
         raise HTTPException(
             status_code=404,
-            detail=f"Invalid image name. Acceptable names: {VALID_IMAGE_NAMES}",
+            detail=f"Invalid image name. Acceptable names: {VALID_COLOR_NAMES}",
         )
     return out_dir / (color + ".png")
 
@@ -401,6 +403,12 @@ def render_one_color(color: str, now: datetime.datetime):
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
 async def html_dev(color: str, at: Optional[str] = None):
+    if not is_valid_color(color):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
+        )
+        
     now = datetime.datetime.now()
     if at:
         now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
@@ -409,6 +417,12 @@ async def html_dev(color: str, at: Optional[str] = None):
 
 @app.get("/render/{color}")
 async def render_endpoint(color: str):
+    if not is_valid_color(color):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
+        )
+
     now = datetime.datetime.now()
     render_one_color(color=color, now=now)
     return f"Rendered {color}. Waiting for download."
@@ -416,6 +430,12 @@ async def render_endpoint(color: str):
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def eink(color: str, at: Optional[str] = None):
+    if not is_valid_color(color):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
+        )
+        
     color = untaint_filename(color)
     now = datetime.datetime.now()
     if at:
