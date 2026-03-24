@@ -57,7 +57,7 @@ def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
 
 VALID_COLOR_NAMES = ["red", "black", "joined"]
 
-def is_valid_color(color: str) -> bool:
+def _is_valid_color(color: str) -> bool:
     return color in VALID_COLOR_NAMES
 
 def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -> None:
@@ -368,7 +368,7 @@ def render_html_template(color: str, now: datetime.datetime):
 
 
 def get_filename(color: str) -> Path:
-    if not is_valid_color(color):
+    if not _is_valid_color(color):
         raise HTTPException(
             status_code=404,
             detail=f"Invalid image name. Acceptable names: {VALID_COLOR_NAMES}",
@@ -403,7 +403,7 @@ def render_one_color(color: str, now: datetime.datetime):
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
 async def html_dev(color: str, at: Optional[str] = None):
-    if not is_valid_color(color):
+    if not _is_valid_color(color):
         raise HTTPException(
             status_code=404,
             detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
@@ -417,7 +417,7 @@ async def html_dev(color: str, at: Optional[str] = None):
 
 @app.get("/render/{color}")
 async def render_endpoint(color: str):
-    if not is_valid_color(color):
+    if not _is_valid_color(color):
         raise HTTPException(
             status_code=404,
             detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
@@ -430,7 +430,7 @@ async def render_endpoint(color: str):
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def eink(color: str, at: Optional[str] = None):
-    if not is_valid_color(color):
+    if not _is_valid_color(color):
         raise HTTPException(
             status_code=404,
             detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
