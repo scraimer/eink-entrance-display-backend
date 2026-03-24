@@ -214,7 +214,7 @@ def image_extract_color_channel(
         filepath.write_bytes(x)
         return str(filepath)
 
-    if True or should_download_to_cache(filepath):
+    if should_download_to_cache(filepath):
         try:
             url = urllib.parse.urlparse(img_url)
             src_filename = f"/tmp/src.{Path(url.path).suffix}"

@@ -20,6 +20,28 @@ EXPIRATION_HOURS = {
 T = TypeVar('T')
 
 
+def _humanize_age(now: datetime.datetime, timestamp: datetime.datetime) -> str:
+    """Return a compact human-readable age string."""
+    delta_seconds = max(0, int((now - timestamp).total_seconds()))
+
+    if delta_seconds < 60:
+        return "less than a minute"
+
+    if delta_seconds < 3600:
+        minutes = delta_seconds // 60
+        unit = "minute" if minutes == 1 else "minutes"
+        return f"{minutes} {unit}"
+
+    if delta_seconds < 86400:
+        hours = delta_seconds // 3600
+        unit = "hour" if hours == 1 else "hours"
+        return f"{hours} {unit}"
+
+    days = delta_seconds // 86400
+    unit = "day" if days == 1 else "days"
+    return f"{days} {unit}"
+
+
 def init_db():
     """Initialize the SQLite database with the required schema."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +170,8 @@ def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.date
     cached_result = get_cached_data(data_type, now=now)
     if cached_result:
         data, timestamp = cached_result
-        print(f"INFO: Using cached {data_type} data from {timestamp.isoformat()}")
+        age = _humanize_age(now=now, timestamp=timestamp)
+        print(f"INFO: Using cached {data_type} data from {timestamp.isoformat()} ({age} old)")
         return data
 
     # Fetch new data
