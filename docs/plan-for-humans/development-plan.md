@@ -1,14 +1,14 @@
 ## Plan
 
-* ~~Create a git repo for this named something like `eink-entrance-display-backend`~~
+* Only show shabbat times when relevant
+  * If it's before a shabbat / chag, then show the entry time on the day of and the day before.
+  * On fast days, show the fast start time and end time.
+  * During shabbat/chag, show the exit time.
 
-* ~~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~~
+* Verify that PNG is the right size; force it to the right size by cutting it
+  down to size.
 
-* ~~Create build script in taskfile to build docker~~
-
-* ~~Add script in taskfile to launch in docker~~
-
-* ~~On the eInk RPi, have a client that downloads the image and displays it periodically~~
+## Wishlist / Ideas
 
 * Create some modular layout mechnism.
 
@@ -21,6 +21,20 @@
    TODO: Build a template to fill with data: shul, weather, smarthome updates (why is AC on, when will it next turn on during shabbat/chag, other changes, report open windows according to temperature sensors, display house diagram, etc)
 
    * Idea #2: Split the image into sub-images. Have each sub-image copied to different x,y origins to make a single large image. (Might have to also support relative position, depending on size of other sub-images)
+
+## Done
+
+* Remove shul times (mincha and shaharit)
+
+* ~~Create a git repo for this named something like `eink-entrance-display-backend`~~
+
+* ~~Move all the Shul Zmanim stuff from `eink-entrace-display` to `eink-entrace-display-backend`~~
+
+* ~~Create build script in taskfile to build docker~~
+
+* ~~Add script in taskfile to launch in docker~~
+
+* ~~On the eInk RPi, have a client that downloads the image and displays it periodically~~
 
 * ~~Move to async data collection, rendering and display:~~
 
@@ -37,8 +51,3 @@
 * ~~Show events from a Google calendar~~
 
 * ~~Smaller date, remove padding~~
-
-* Verify that PNG is the right size; force it to the right size by cutting it
-  down to size.
-
-* Hide Shabbat times entirely on Sun-Wed. On Thr, only show Shabbat entry time.

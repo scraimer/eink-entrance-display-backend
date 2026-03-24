@@ -47,6 +47,7 @@ h2 #omer {
     display: block;
     width: 200px;
     height: 20px;
+    line-height: 20px;
     position: absolute;
     bottom: 0px;
     left: 0px;
@@ -207,7 +208,7 @@ h2 #omer {
 }
 
 #calendar {
-    height: 360px;
+    height: 445px;
     overflow: hidden;
     margin-top: 1px;
     float: right;
