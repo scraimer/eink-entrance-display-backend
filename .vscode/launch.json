@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Backend Server",
+            "name": "Run Server (inside devcontainer)",
             "type": "f5anything",
             "request": "launch",
-            "command": "uvicorn src.eink_backend.main:app --host 0.0.0.0 --port 8323 --reload"
+            "command": "uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port 8323"
         },
         {
             "name": "Python: Current File",
