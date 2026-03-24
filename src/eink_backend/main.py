@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from pathlib import Path
 import os
 import re
+from enum import Enum
 from PIL import Image, ImageDraw, ImageFont
 from pyluach import dates, parshios
 import traceback
@@ -55,10 +56,16 @@ def convert_png_to_mono_png(src: Path, dest: Path) -> Path:
     mono_image = image_to_mono(src_image)
     mono_image.save(dest)
 
-VALID_COLOR_NAMES = ["red", "black", "joined"]
+class ColorName(str, Enum):
+    """Valid color names for the e-ink display output."""
+    RED = "red"
+    BLACK = "black"
+    JOINED = "joined"
+
+_VALID_COLOR_NAMES = [color.value for color in ColorName]
 
 def _is_valid_color(color: str) -> bool:
-    return color in VALID_COLOR_NAMES
+    return color in _VALID_COLOR_NAMES
 
 def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -> None:
     DEVICE_HEIGHT = 880
@@ -371,7 +378,7 @@ def get_filename(color: str) -> Path:
     if not _is_valid_color(color):
         raise HTTPException(
             status_code=404,
-            detail=f"Invalid image name. Acceptable names: {VALID_COLOR_NAMES}",
+            detail=f"Invalid image name. Acceptable names: {_VALID_COLOR_NAMES}",
         )
     return out_dir / (color + ".png")
 
@@ -402,48 +409,31 @@ def render_one_color(color: str, now: datetime.datetime):
 
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
-async def html_dev(color: str, at: Optional[str] = None):
-    if not _is_valid_color(color):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
-        )
-        
+async def html_dev(color: ColorName, at: Optional[str] = None):
     now = datetime.datetime.now()
     if at:
         now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
-    return generate_html_content(color=color, now=now)
+    return generate_html_content(color=color.value, now=now)
 
 
 @app.get("/render/{color}")
-async def render_endpoint(color: str):
-    if not _is_valid_color(color):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
-        )
-
+async def render_endpoint(color: ColorName):
     now = datetime.datetime.now()
-    render_one_color(color=color, now=now)
-    return f"Rendered {color}. Waiting for download."
+    render_one_color(color=color.value, now=now)
+    return f"Rendered {color.value}. Waiting for download."
 
 
 @app.get("/eink/{color}", response_class=FileResponse)
-async def eink(color: str, at: Optional[str] = None):
-    if not _is_valid_color(color):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Invalid color name. Acceptable names: {VALID_COLOR_NAMES}",
-        )
-        
-    color = untaint_filename(color)
+async def eink(color: ColorName, at: Optional[str] = None):
+    color_str = color.value
+    color_str = untaint_filename(color_str)
     now = datetime.datetime.now()
     if at:
         now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
     # always render "joined", since it's for dev work
-    if color == "joined" or color == "black":
-        render_one_color(color=color, now=now)
-    image_path = get_filename(color=color)
+    if color_str == "joined" or color_str == "black":
+        render_one_color(color=color_str, now=now)
+    image_path = get_filename(color=color_str)
     if not image_path.exists():
         raise HTTPException(
             status_code=404,
