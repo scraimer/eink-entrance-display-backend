@@ -1,3 +1,8 @@
+html {
+    width: 528px;
+    height: 880px;
+}
+
 body,
 td {
     font-size: 24px;
