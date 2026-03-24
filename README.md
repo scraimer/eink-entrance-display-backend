@@ -59,7 +59,7 @@ To run the server:
 And then open this link in your browser: http://localhost:8323
 (This works since that port is fowarded by VSCode)
 
-## Connecting to container in remote server
+## Deprecated: Connecting to container in remote server
 
 On VSCode computer:
 
