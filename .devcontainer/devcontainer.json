@@ -27,7 +27,7 @@
 	// "remoteUser": "root"
 	// 1. Make the timezone Israel
 	// 2. Copy the SSH keys and config from ~/.my-ssh to ~/.ssh
-	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime ; mkdir -p /root/.ssh ; cp /root/.my-ssh/* /root/.ssh/",
+	"postCreateCommand": "ln -fs /usr/share/zoneinfo/Israel /etc/localtime ; mkdir -p /root/.ssh ; if [ -d /root/.my-ssh ]; then cp -a /root/.my-ssh/. /root/.ssh/ 2>/dev/null || true; fi",
 	"containerEnv": {
 		"TZ": "Israel"
 	},

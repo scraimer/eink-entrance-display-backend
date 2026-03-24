@@ -58,3 +58,16 @@ To run the server:
 
 And then open this link in your browser: http://localhost:8323
 (This works since that port is fowarded by VSCode)
+
+## Connecting to container in remote server
+
+On VSCode computer:
+
+```shell
+docker context create entrance-display --docker "host=ssh://pi@10.5.1.20"
+docker context use remote-context-label
+```
+
+In VSCode, install [Docker](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker) and "Remote Development" (ms-vscode-remote.vscode-remote-extensionpack)
+
+You should already see the containers.
