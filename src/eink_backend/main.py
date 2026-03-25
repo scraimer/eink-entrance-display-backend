@@ -426,13 +426,16 @@ def render_one_color(color: str, now: datetime.datetime):
     render_html_template(color=color, now=now)
     filename = get_filename(color=color)
 
+_DATETIME_FORMAT_IN_URL = "%Y%m%d-%H%M%S"
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
 async def html_dev(color: ColorName, at: Optional[str] = None):
     now = datetime.datetime.now()
     if at:
-        now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
-    return generate_html_content(color=color.value, now=now)
+        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
+    html = generate_html_content(color=color.value, now=now)
+    now_as_string = f'<!-- at={now.strftime(_DATETIME_FORMAT_IN_URL)} -->\n'
+    return now_as_string + html
 
 
 @app.get("/render/{color}")
@@ -448,7 +451,7 @@ async def eink(color: ColorName, at: Optional[str] = None):
     color_str = untaint_filename(color_str)
     now = datetime.datetime.now()
     if at:
-        now = datetime.datetime.strptime(at, "%Y%m%d-%H%M%S")
+        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
     # always render "joined", since it's for dev work
     if color_str == "joined" or color_str == "black":
         render_one_color(color=color_str, now=now)
