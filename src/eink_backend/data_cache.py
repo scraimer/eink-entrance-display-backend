@@ -158,6 +158,24 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     _logger.info(f"Cached {data_type} data, expires at {expiration.isoformat()}")
 
 
+def is_data_expired(data_type: str, now: datetime.datetime) -> bool:
+    """
+    Check if cached data has expired or doesn't exist.
+
+    Args:
+        data_type: The type of data (e.g., 'weather', 'zmanim')
+        now: The reference time to check expiration
+
+    Returns:
+        True if data is missing or expired, False if valid and fresh
+    """
+    if data_type not in EXPIRATION_HOURS:
+        return True
+
+    cached_result = get_cached_data(data_type, now=now)
+    return cached_result is None
+
+
 def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.datetime) -> T:
     """
     Get data from cache if valid, otherwise fetch using the provided function and cache it.

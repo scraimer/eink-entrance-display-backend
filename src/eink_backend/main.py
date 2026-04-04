@@ -12,13 +12,21 @@ import os
 import re
 from enum import Enum
 from PIL import Image, ImageDraw, ImageFont
+from fastapi.params import Query
 from pyluach import dates, parshios
 import traceback
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
 from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
+
+
+class CacheMissError(Exception):
+    """Raised when required data is not available in the cache."""
+    pass
 
 
 def _setup_logging():
@@ -42,14 +50,72 @@ root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
+# Global scheduler instance
+scheduler: Optional[BackgroundScheduler] = None
+
+
+def collect_all_data_task():
+    """
+    Background task that collects all data and updates the cache.
+    Called every 15 minutes by the scheduler.
+    Each data type is only refreshed if it has expired.
+    """
+    now = datetime.datetime.now()
+    _logger.info("Starting scheduled data collection task")
+
+    data_types = [
+        ("zmanim", lambda: efrat_zmanim.collect_data(now=now)),
+        ("weather", lambda: weather.collect_data(now=now)),
+        ("calendar", lambda: my_calendar.collect_data()),
+        ("chores", lambda: chores.collect_data(now=now)),
+        ("seating", lambda: seating.collect_data(now=now)),
+    ]
+
+    for data_type, fetch_fn in data_types:
+        try:
+            # Check if data is expired
+            if data_cache.is_data_expired(data_type, now=now):
+                _logger.info(f"Collecting fresh {data_type} data")
+                data = fetch_fn()
+                if data is not None:
+                    data_cache.save_cached_data(data_type, data, now=now)
+            else:
+                _logger.debug(f"Skipping {data_type} - still fresh")
+        except Exception as ex:
+            _logger.error(f"Error collecting {data_type}: {ex}")
+            traceback.print_exc()
+
+    _logger.info("Scheduled data collection task completed")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize the database on startup and clean expired records."""
+    """Initialize the database on startup, start the scheduler, and clean up on shutdown."""
+    global scheduler
+
+    # Initialize the cache database
     data_cache.init_db(_logger)
     data_cache.clean_expired_records(older_than_days=30)
-    _logger.info("Init complete.")
+    _logger.info("Cache database initialized.")
+
+    # Start the background scheduler
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        collect_all_data_task,
+        'interval',
+        minutes=15,
+        id='collect_all_data',
+        name='Collect all data every 15 minutes'
+    )
+    scheduler.start()
+    _logger.info("Background scheduler started (collecting data every 15 minutes).")
+
     yield
+
+    # Shutdown the scheduler
+    if scheduler and scheduler.running:
+        scheduler.shutdown()
+        _logger.info("Background scheduler stopped.")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -359,8 +425,8 @@ def find_missing_template_keys(
     return missing_keys
 
 
-def generate_html_content(color: str, now: datetime.datetime) -> str:
-    collected = collect_data(now=now)
+def generate_html_content(color: str, now: datetime.datetime, force_refresh: bool = False) -> str:
+    collected = collect_data(now=now, force_refresh=force_refresh)
     try:
         all_values = collect_all_values_of_data(
             zmanim=collected.zmanim,
@@ -388,8 +454,8 @@ def generate_html_content(color: str, now: datetime.datetime) -> str:
     return template.substitute(**all_values)
 
 
-def render_html_template(color: str, now: datetime.datetime):
-    html_content = generate_html_content(color=color, now=now)
+def render_html_template(color: str, now: datetime.datetime, force_refresh: bool = False):
+    html_content = generate_html_content(color=color, now=now, force_refresh=force_refresh)
     render_html_template_single_color(color=color, html_content=html_content)
 
 
@@ -411,50 +477,120 @@ class PageData:
     seating_content: seating.SeatingData
 
 
-def collect_data(now: datetime.datetime):
+def get_cached_data_or_error(data_type: str, now: datetime.datetime, force_refresh: bool = False) -> Any:
+    """
+    Retrieve data from cache, or fetch fresh if force_refresh is True.
+
+    Args:
+        data_type: The type of data to retrieve
+        now: Current time for reference
+        force_refresh: If True, bypass cache and fetch fresh data
+
+    Returns:
+        The cached or freshly-fetched data
+
+    Raises:
+        CacheMissError: If data is missing from cache and force_refresh is False
+    """
+    if force_refresh:
+        # Bypass cache and fetch fresh data
+        _logger.info(f"force_refresh=True, fetching fresh {data_type} data")
+        if data_type == "zmanim":
+            return efrat_zmanim.collect_data(now=now)
+        elif data_type == "weather":
+            return weather.collect_data(now=now)
+        elif data_type == "calendar":
+            return my_calendar.collect_data()
+        elif data_type == "chores":
+            return chores.collect_data(now=now)
+        elif data_type == "seating":
+            return seating.collect_data(now=now)
+    
+    # Try to get from cache
+    cached_result = data_cache.get_cached_data(data_type, now=now)
+    if cached_result:
+        data, timestamp = cached_result
+        return data
+    
+    # Data not in cache
+    raise CacheMissError(f"No cached data available for {data_type}")
+
+
+def collect_data(now: datetime.datetime, force_refresh: bool = False):
+    """
+    Collect all page data from cache.
+
+    Args:
+        now: Current time for reference
+        force_refresh: If True, bypass cache and fetch fresh data for all sources
+
+    Returns:
+        PageData with all current data
+
+    Raises:
+        CacheMissError: If any required data is not in cache (unless force_refresh=True)
+    """
     return PageData(
-        zmanim=data_cache.cache_or_fetch("zmanim", lambda: efrat_zmanim.collect_data(now=now), now=now),
-        weather_forecast=data_cache.cache_or_fetch("weather", lambda: weather.collect_data(now=now), now=now),
-        calendar_content=data_cache.cache_or_fetch("calendar", lambda: my_calendar.collect_data(), now=now),
-        chores_content=data_cache.cache_or_fetch("chores", lambda: chores.collect_data(now=now), now=now),
-        seating_content=data_cache.cache_or_fetch("seating", lambda: seating.collect_data(now=now), now=now),
+        zmanim=get_cached_data_or_error("zmanim", now=now, force_refresh=force_refresh),
+        weather_forecast=get_cached_data_or_error("weather", now=now, force_refresh=force_refresh),
+        calendar_content=get_cached_data_or_error("calendar", now=now, force_refresh=force_refresh),
+        chores_content=get_cached_data_or_error("chores", now=now, force_refresh=force_refresh),
+        seating_content=get_cached_data_or_error("seating", now=now, force_refresh=force_refresh),
     )
 
 
-def render_one_color(color: str, now: datetime.datetime):
+def render_one_color(color: str, now: datetime.datetime, force_refresh: bool = False):
     color = untaint_filename(color)
-    render_html_template(color=color, now=now)
+    render_html_template(color=color, now=now, force_refresh=force_refresh)
     filename = get_filename(color=color)
 
 _DATETIME_FORMAT_IN_URL = "%Y%m%d-%H%M%S"
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
-async def html_dev(color: ColorName, at: Optional[str] = None):
+async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bool = False):
     now = datetime.datetime.now()
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
-    html = generate_html_content(color=color.value, now=now)
+    try:
+        html = generate_html_content(color=color.value, now=now, force_refresh=force_refresh)
+    except CacheMissError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
     now_as_string = f'<!-- at={now.strftime(_DATETIME_FORMAT_IN_URL)} -->\n'
     return now_as_string + html
 
 
 @app.get("/render/{color}")
-async def render_endpoint(color: ColorName):
+async def render_endpoint(color: ColorName, force_refresh: bool = False):
     now = datetime.datetime.now()
-    render_one_color(color=color.value, now=now)
+    try:
+        render_one_color(color=color.value, now=now, force_refresh=force_refresh)
+    except CacheMissError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
     return f"Rendered {color.value}. Waiting for download."
 
 
 @app.get("/eink/{color}", response_class=FileResponse)
-async def eink(color: ColorName, at: Optional[str] = None):
+async def eink(color: ColorName, at: Optional[str] = None, force_refresh: bool = False):
     color_str = color.value
     color_str = untaint_filename(color_str)
     now = datetime.datetime.now()
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
-    # always render "joined", since it's for dev work
-    if color_str == "joined" or color_str == "black":
-        render_one_color(color=color_str, now=now)
+    try:
+        # always render "joined", since it's for dev work
+        if color_str == "joined" or color_str == "black":
+            render_one_color(color=color_str, now=now, force_refresh=force_refresh)
+    except CacheMissError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=str(e)
+        )
     image_path = get_filename(color=color_str)
     if not image_path.exists():
         raise HTTPException(
@@ -489,6 +625,48 @@ async def read_css_file(filename: str):
 
 
 from . import render
+
+
+@app.get("/cache-status")
+async def cache_status(client_last_updated_at: Optional[str] = Query(None, example="20260327-100000")):
+    """Debug endpoint: returns the current state of all cached data."""
+    import sqlite3
+    
+    now = datetime.datetime.now()
+    client_last_updated_at_dt = None
+    if client_last_updated_at:
+        client_last_updated_at_dt = datetime.datetime.strptime(client_last_updated_at, _DATETIME_FORMAT_IN_URL)
+    cache_info = {}
+    
+    try:
+        conn = sqlite3.connect(str(data_cache.DB_PATH))
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT data_type, timestamp, expiration FROM data_cache")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        for data_type, timestamp_str, expiration_str in rows:
+            timestamp = datetime.datetime.fromisoformat(timestamp_str)
+            expiration = datetime.datetime.fromisoformat(expiration_str)
+            is_expired = expiration <= now
+            client_should_update = is_expired or (client_last_updated_at_dt and timestamp > client_last_updated_at_dt)
+            
+            cache_info[data_type] = {
+                "updated_at": timestamp.isoformat(),
+                "client_should_update": client_should_update,
+                "expiration": expiration.isoformat(),
+                "expired": is_expired,
+                "ttl_hours": data_cache.EXPIRATION_HOURS.get(data_type, "unknown"),
+            }
+    except Exception as e:
+        cache_info["error"] = str(e)
+    
+    return {
+        "now": now.isoformat(),
+        "scheduler_running": scheduler.running if scheduler else False,
+        "cache_data": cache_info
+    }
 
 
 @app.get("/test-make-image", response_class=FileResponse)
