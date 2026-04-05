@@ -50,6 +50,41 @@ root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
+
+def _is_data_type_relevant_at_time(data_type: str, now: datetime.datetime) -> bool:
+    """
+    Determine if a data type is relevant for display at the given time.
+    
+    This centralizes the logic for when each data type should be shown:
+    - Always shown: zmanim, weather, calendar
+    - Friday before 16:00: chores (displayed instead of seating)
+    - Friday after 16:00 or Saturday 10:00-13:00: seating (displayed instead of chores)
+    
+    Args:
+        data_type: The type of data ("zmanim", "weather", "calendar", "chores", "seating")
+        now: The current datetime to check relevance for
+        
+    Returns:
+        True if the data type is relevant for display at the given time
+    """
+    wkday = now.weekday()
+    hour = now.hour
+    
+    # Always relevant data types
+    if data_type in ("zmanim", "weather", "calendar"):
+        return True
+    
+    # Conditional data types
+    if data_type == "chores":
+        # Chores are shown Friday until 16:00
+        return wkday == FRIDAY and hour < 16
+    
+    if data_type == "seating":
+        # Seating is shown Friday after 16:00 or Saturday 10:00-13:00
+        return (wkday == FRIDAY and hour >= 16) or (wkday == SATURDAY and 10 <= hour <= 13)
+    
+    return False
+
 # Global scheduler instance
 scheduler: Optional[BackgroundScheduler] = None
 
@@ -60,7 +95,7 @@ def collect_all_data_task():
     Called every 15 minutes by the scheduler.
     Each data type is only refreshed if it has expired.
     """
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     _logger.info("Starting scheduled data collection task")
 
     data_types = [
@@ -403,9 +438,8 @@ def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
     if wkday == FRIDAY and hour < 16:
         template_path = Path("/app/assets/layout-choreday.html")
     # Friday and Shabbat, around meal-time, show seating layout
-    if (wkday == FRIDAY and hour >= 16) or (
-        wkday == SATURDAY and (hour >= 10 and hour <= 13)
-    ):
+    # (Uses the same logic as _is_data_type_relevant_at_time for seating)
+    if (wkday == FRIDAY and hour >= 16) or (wkday == SATURDAY and 10 <= hour <= 13):
         template_path = Path("/app/assets/layout-shabbat-seating.html")
     return load_template_from_file(file=template_path)
 
@@ -545,10 +579,19 @@ def render_one_color(color: str, now: datetime.datetime, force_refresh: bool = F
     filename = get_filename(color=color)
 
 _DATETIME_FORMAT_IN_URL = "%Y%m%d-%H%M%S"
+_DATETIME_FORMAT_WITH_TZ = "%Y%m%d-%H%M%S%z"
 
 @app.get("/html-dev/{color}", response_class=HTMLResponse)
 async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bool = False):
-    now = datetime.datetime.now()
+    """
+    Generates and returns HTML content for the specified color.
+    
+    Args:
+        color: The color variant (red, black, joined)
+        at: Optional datetime to render (format: "%Y%m%d-%H%M%S", must be UTC timezone). Defaults to current UTC time.
+        force_refresh: If True, bypass cache and fetch fresh data
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
     try:
@@ -558,13 +601,13 @@ async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bo
             status_code=503,
             detail=str(e)
         )
-    now_as_string = f'<!-- at={now.strftime(_DATETIME_FORMAT_IN_URL)} -->\n'
+    now_as_string = f'<!-- at={now.strftime(_DATETIME_FORMAT_WITH_TZ)} -->\n'
     return now_as_string + html
 
 
 @app.get("/render/{color}")
 async def render_endpoint(color: ColorName, force_refresh: bool = False):
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     try:
         render_one_color(color=color.value, now=now, force_refresh=force_refresh)
     except CacheMissError as e:
@@ -577,9 +620,17 @@ async def render_endpoint(color: ColorName, force_refresh: bool = False):
 
 @app.get("/eink/{color}", response_class=FileResponse)
 async def eink(color: ColorName, at: Optional[str] = None, force_refresh: bool = False):
+    """
+    Returns the rendered image file for the specified color.
+    
+    Args:
+        color: The color variant (red, black, joined)
+        at: Optional datetime to render (format: "%Y%m%d-%H%M%S", must be UTC timezone). Defaults to current UTC time.
+        force_refresh: If True, bypass cache and fetch fresh data
+    """
     color_str = color.value
     color_str = untaint_filename(color_str)
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
     try:
@@ -624,18 +675,25 @@ async def read_css_file(filename: str):
         )
 
 
-from . import render
-
 
 @app.get("/cache-status")
 async def cache_status(client_last_updated_at: Optional[str] = Query(None, example="20260327-100000")):
-    """Debug endpoint: returns the current state of all cached data."""
+    """
+    Debug endpoint: returns the current state of all cached data.
+    
+    Args:
+        client_last_updated_at: Optional datetime when client last updated (format: "%Y%m%d-%H%M%S", must be UTC timezone).
+                                Used to determine if client needs to refresh.
+    """
     import sqlite3
     
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.timezone.utc)
     client_last_updated_at_dt = None
     if client_last_updated_at:
         client_last_updated_at_dt = datetime.datetime.strptime(client_last_updated_at, _DATETIME_FORMAT_IN_URL)
+        # Ensure timezone-aware by adding UTC if naive
+        if client_last_updated_at_dt.tzinfo is None:
+            client_last_updated_at_dt = client_last_updated_at_dt.replace(tzinfo=datetime.timezone.utc)
     cache_info = {}
     
     try:
@@ -648,7 +706,13 @@ async def cache_status(client_last_updated_at: Optional[str] = Query(None, examp
         
         for data_type, timestamp_str, expiration_str in rows:
             timestamp = datetime.datetime.fromisoformat(timestamp_str)
+            # Ensure timezone-aware
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
             expiration = datetime.datetime.fromisoformat(expiration_str)
+            # Ensure timezone-aware
+            if expiration.tzinfo is None:
+                expiration = expiration.replace(tzinfo=datetime.timezone.utc)
             is_expired = expiration <= now
             client_should_update = is_expired or (client_last_updated_at_dt and timestamp > client_last_updated_at_dt)
             
@@ -661,6 +725,7 @@ async def cache_status(client_last_updated_at: Optional[str] = Query(None, examp
             }
     except Exception as e:
         cache_info["error"] = str(e)
+        cache_info["error_stack_trace"] = traceback.format_exc()
     
     return {
         "now": now.isoformat(),
@@ -669,11 +734,72 @@ async def cache_status(client_last_updated_at: Optional[str] = Query(None, examp
     }
 
 
-@app.get("/test-make-image", response_class=FileResponse)
-async def read_image_from_cache():
-    path = render.image_extract_color_channel(
-        img_url="https://openweathermap.org/img/wn/02n@2x.png",
-        # img_url="http://openweathermap.org/img/wn/03d@2x.png",
-        color="black"
-    )
-    return path
+@app.get("/what-has-changed")
+async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, example="20260327-100000"), at: Optional[str] = None):
+    """
+    Debug endpoint: reports which cached data types have changed since client_last_updated_at,
+    and whether those changes are relevant to the display at the given time.
+    
+    This helps clients determine whether they need to refresh the display based on:
+    1. Whether data has actually changed (newer timestamp than client_last_updated_at)
+    2. Whether that data type is relevant for display at the current time
+    
+    Args:
+        client_last_updated_at: Optional datetime when client last updated (format: "%Y%m%d-%H%M%S", must be UTC timezone).
+                                Used to determine if client needs to refresh.
+        at: Optional datetime to check relevance for (format: "%Y%m%d-%H%M%S", must be UTC timezone). Defaults to current UTC time.
+    """
+    import sqlite3
+    
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if at:
+        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
+        # Ensure timezone-aware by adding UTC if naive
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=datetime.timezone.utc)
+    
+    client_last_updated_at_dt = None
+    if client_last_updated_at:
+        client_last_updated_at_dt = datetime.datetime.strptime(client_last_updated_at, _DATETIME_FORMAT_IN_URL)
+        # Ensure timezone-aware by adding UTC if naive
+        if client_last_updated_at_dt.tzinfo is None:
+            client_last_updated_at_dt = client_last_updated_at_dt.replace(tzinfo=datetime.timezone.utc)
+    
+    changes_report = {}
+    
+    try:
+        conn = sqlite3.connect(str(data_cache.DB_PATH))
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT data_type, timestamp FROM data_cache")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        for data_type, timestamp_str in rows:
+            timestamp = datetime.datetime.fromisoformat(timestamp_str)
+            # Ensure timezone-aware
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+            
+            # Determine if data has changed since client_last_updated_at
+            has_changed = False
+            if client_last_updated_at_dt:
+                has_changed = timestamp > client_last_updated_at_dt
+            
+            # Determine if this data type is relevant to the display at the given time
+            is_relevant = _is_data_type_relevant_at_time(data_type, now)
+            
+            changes_report[data_type] = {
+                "updated_at": timestamp.isoformat(),
+                "has_changed": has_changed,
+                "is_relevant_to_display": is_relevant
+            }
+    except Exception as e:
+        changes_report["error"] = str(e)
+        changes_report["error_stack_trace"] = traceback.format_exc()
+    
+    return {
+        "now": now.isoformat(),
+        "client_last_updated_at": client_last_updated_at,
+        "changes": changes_report
+    }

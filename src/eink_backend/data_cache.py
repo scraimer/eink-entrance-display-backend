@@ -74,7 +74,7 @@ def clean_expired_records(older_than_days: int = 30):
     conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
-    cutoff_date = datetime.datetime.now() - datetime.timedelta(days=older_than_days)
+    cutoff_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=older_than_days)
 
     cursor.execute(
         "DELETE FROM data_cache WHERE expiration < ?",
@@ -95,10 +95,11 @@ def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
-        now: The reference time to check expiration. Defaults to current time.
+        now: The reference time to check expiration (should be UTC timezone-aware).
 
     Returns:
-        tuple: (data, timestamp) if valid cached data exists, None otherwise
+        tuple: (data, timestamp) if valid cached data exists, None otherwise.
+                timestamp is always UTC timezone-aware.
     """
     conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
@@ -114,7 +115,10 @@ def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
     if result:
         data_blob, timestamp_str = result
         data = pickle.loads(data_blob)
+        # Parse ISO format and explicitly set UTC timezone if not already present
         timestamp = datetime.datetime.fromisoformat(timestamp_str)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
         return (data, timestamp)
 
     return None
@@ -127,7 +131,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
         data: The data to cache
-        now: The reference time to calculate expiration. Defaults to current time.
+        now: The reference time to calculate expiration (should be UTC timezone-aware).
     """
     if data_type not in EXPIRATION_HOURS:
         _logger.warning(f"Unknown data type: {data_type}")
@@ -164,7 +168,7 @@ def is_data_expired(data_type: str, now: datetime.datetime) -> bool:
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
-        now: The reference time to check expiration
+        now: The reference time to check expiration (should be UTC timezone-aware)
 
     Returns:
         True if data is missing or expired, False if valid and fresh
@@ -183,7 +187,7 @@ def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.date
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
         fetch_fn: A callable that fetches the data if not cached
-        now: The reference time for cache expiration checks.
+        now: The reference time for cache expiration checks (should be UTC timezone-aware).
 
     Returns:
         The cached or freshly fetched data
