@@ -35,7 +35,6 @@ tasks:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
       - docker run -it --name {{.PROD_CONTAINER_NAME}} --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
->>>>>>> 4c3c568 (Always restart container)
 
   debug_dev_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
