@@ -5,6 +5,8 @@ vars:
   DEV_PORT: 8323
   PROD_IMAGE: eink-entrance-display-backend:latest
   DEBUG_IMAGE: eink-entrance-display-backend-debug:latest
+  PROD_CONTAINER_NAME: eink_backend_prod
+  DEV_CONTAINER_NAME: eink_backend_dev
 
 tasks:
   build_base_docker_container:
@@ -21,7 +23,7 @@ tasks:
   run_docker_daemon:
     desc: Run the docker so it restarts on reboot
     cmds:
-      - docker run -d --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} {{.PROD_IMAGE}}
+      - docker run -d --name {{.PROD_CONTAINER_NAME}} --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} {{.PROD_IMAGE}}
 
   debug_build_docker:
     desc: Build the docker, while preserving intermediate layers
@@ -33,13 +35,13 @@ tasks:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
       #- docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
-      - docker run -it --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
+      - docker run -it --name {{.PROD_CONTAINER_NAME}} --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
   debug_dev_run_docker:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
       #- docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
-      - docker run -it --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
+      - docker run -it --name {{.DEV_CONTAINER_NAME}} --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
   debug_run:
     desc: Run the server outside the server, for debugging (inside devcontainer only)
