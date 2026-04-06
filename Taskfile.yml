@@ -47,6 +47,16 @@ tasks:
     cmds:
       - /usr/local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.DEV_PORT}}
 
+  stop_docker:
+    desc: Stop the prod docker container
+    cmds:
+      - docker stop {{.PROD_CONTAINER_NAME}}
+
+  stop_dev_docker:
+    desc: Stop the dev docker container
+    cmds:
+      - docker stop {{.DEV_CONTAINER_NAME}}
+
   run_tests:
     desc: Build debug docker and run the tests (inside devcontainer only)
     cmds:
