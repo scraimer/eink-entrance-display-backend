@@ -51,11 +51,13 @@ tasks:
     desc: Stop the prod docker container
     cmds:
       - docker stop {{.PROD_CONTAINER_NAME}}
+      - docker container rm {{.PROD_CONTAINER_NAME}}
 
   stop_dev_docker:
     desc: Stop the dev docker container
     cmds:
       - docker stop {{.DEV_CONTAINER_NAME}}
+      - docker container rm {{.DEV_CONTAINER_NAME}}
 
   run_tests:
     desc: Build debug docker and run the tests (inside devcontainer only)
