@@ -14,6 +14,7 @@ from enum import Enum
 from PIL import Image, ImageDraw, ImageFont
 from fastapi.params import Query
 from pyluach import dates, parshios
+import zoneinfo
 import traceback
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -253,7 +254,7 @@ def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool
     if not tset_shabat:
         return False
     TSET_IS_SOON = datetime.timedelta(hours=2)
-    diff: datetime.timedelta = tset_shabat - now
+    diff: datetime.timedelta = tset_shabat.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Jerusalem")) - now
     return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
 
 
@@ -286,11 +287,14 @@ def omer_count(now: datetime.datetime, now_is_after_starlight: bool):
     return display_text
 
 
-def is_now_after_starlight(now: datetime.datetime, tzet_shabbat: Optional[str]) -> bool:
+def _is_now_after_starlight(now: datetime.datetime, tzet_shabbat: Optional[str]) -> bool:
+    """
+    Returns true if `now` is after the stars have come out.
+    Used for checking if Shabbat is already over.
+    """
     starlight_estimate_s = tzet_shabbat
     if not starlight_estimate_s:
         return False
-    print(f"'{starlight_estimate_s=}'")
     hour_s = starlight_estimate_s[0:2]
     minute_s = starlight_estimate_s[3:5]
     starlight = datetime.time(hour=int(hour_s), minute=int(minute_s))
@@ -328,7 +332,7 @@ def collect_all_values_of_data(
     else:
         print("Warning: no zmanim data available.")
 
-    now_is_after_starlight = is_now_after_starlight(now=now, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
+    now_is_after_starlight = _is_now_after_starlight(now=now, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
     omer = omer_count(now=now, now_is_after_starlight=now_is_after_starlight)
 
     weather_dict = {"weather_report": ""}
