@@ -16,6 +16,7 @@ from fastapi.params import Query
 from pyluach import dates, parshios
 import zoneinfo
 import traceback
+import sqlite3
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -37,7 +38,7 @@ def _setup_logging():
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     return logger
 
 
@@ -45,6 +46,9 @@ _logger = _setup_logging()
 
 FRIDAY = 4
 SATURDAY = 5
+
+# Data refresh interval for the background scheduler
+_DATA_REFRESH_INTERVAL = datetime.timedelta(minutes=15)
 
 root_dir = Path(os.path.abspath(__file__)).parent.parent.parent
 """This should point to the parent of the `src` directory"""
@@ -93,7 +97,7 @@ scheduler: Optional[BackgroundScheduler] = None
 def collect_all_data_task():
     """
     Background task that collects all data and updates the cache.
-    Called every 15 minutes by the scheduler.
+    Called every DATA_REFRESH_INTERVAL by the scheduler.
     Each data type is only refreshed if it has expired.
     """
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -139,12 +143,12 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         collect_all_data_task,
         'interval',
-        minutes=15,
+        seconds=int(_DATA_REFRESH_INTERVAL.total_seconds()),
         id='collect_all_data',
-        name='Collect all data every 15 minutes'
+        name=f'Collect all data every {int(_DATA_REFRESH_INTERVAL.total_seconds() / 60)} minutes'
     )
     scheduler.start()
-    _logger.info("Background scheduler started (collecting data every 15 minutes).")
+    _logger.info(f"Background scheduler started (collecting data every {int(_DATA_REFRESH_INTERVAL.total_seconds() / 60)} minutes).")
 
     yield
 
@@ -753,8 +757,9 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
                                 Used to determine if client needs to refresh.
         at: Optional datetime to check relevance for (format: "%Y%m%d-%H%M%S", must be UTC timezone). Defaults to current UTC time.
     """
-    import sqlite3
     
+    _logger.info(f"Received /what-has-changed request with client_last_updated_at={client_last_updated_at} and at={at}")
+
     now = datetime.datetime.now(datetime.timezone.utc)
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
@@ -765,9 +770,13 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
     client_last_updated_at_dt = None
     if client_last_updated_at:
         client_last_updated_at_dt = datetime.datetime.strptime(client_last_updated_at, _DATETIME_FORMAT_IN_URL)
+        _logger.debug(f"Parsed client_last_updated_at: {client_last_updated_at_dt} from input: {client_last_updated_at}")
         # Ensure timezone-aware by adding UTC if naive
         if client_last_updated_at_dt.tzinfo is None:
             client_last_updated_at_dt = client_last_updated_at_dt.replace(tzinfo=datetime.timezone.utc)
+            _logger.debug(f"Added timezone information, so now client_last_updated_at is {client_last_updated_at_dt}")
+    else:
+        _logger.warning("client_last_updated_at is not provided, cannot determine if data has changed. Defaulting to None.")
     
     changes_report = {}
     
@@ -788,7 +797,10 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
             # Determine if data has changed since client_last_updated_at
             has_changed = False
             if client_last_updated_at_dt:
+                _logger.debug(f"Comparing timestamp for {data_type}: {timestamp} with client_last_updated_at: {client_last_updated_at_dt}")
                 has_changed = timestamp > client_last_updated_at_dt
+            else:
+                _logger.warning("client_last_updated_at is not provided, cannot determine if data has changed. Defaulting to False.")
             
             # Determine if this data type is relevant to the display at the given time
             is_relevant = _is_data_type_relevant_at_time(data_type, now)

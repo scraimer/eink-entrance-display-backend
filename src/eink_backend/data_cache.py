@@ -3,7 +3,7 @@ import sqlite3
 import pickle
 import datetime
 from pathlib import Path
-from typing import Optional, TypeVar, Callable
+from typing import Any, Optional, TypeVar, Callable
 
 # Database path in the app directory
 DB_PATH = Path("/app/data_cache.db")
@@ -89,7 +89,7 @@ def clean_expired_records(older_than_days: int = 30):
         _logger.info(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
 
 
-def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
+def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple[Any,datetime.datetime]]:
     """
     Retrieve cached data if it hasn't expired.
 
@@ -119,8 +119,10 @@ def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple]:
         timestamp = datetime.datetime.fromisoformat(timestamp_str)
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=datetime.timezone.utc)
+        _logger.debug(f"get_cached_data(): fetched {data_type} data from cache with timestamp {timestamp.isoformat()}")
         return (data, timestamp)
 
+    _logger.debug(f"get_cached_data(): no valid cached data for {data_type} (none, or may have already expired)")
     return None
 
 
@@ -177,7 +179,15 @@ def is_data_expired(data_type: str, now: datetime.datetime) -> bool:
         return True
 
     cached_result = get_cached_data(data_type, now=now)
-    return cached_result is None
+    _logger.debug(f"is_data_expired(): data_type={data_type}, now={now.isoformat()}, cached_result={'found' if cached_result else 'not found or expired'}, cached_data_age={_humanize_age(now=now, timestamp=cached_result[1]) if cached_result else 'N/A'}")
+    if cached_result is None:
+        return True
+    
+    _, timestamp = cached_result
+    if timestamp + datetime.timedelta(hours=EXPIRATION_HOURS[data_type]) <= now:
+        return True
+
+    return False
 
 
 def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.datetime) -> T:
