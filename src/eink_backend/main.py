@@ -24,7 +24,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 
 from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
-
+from .config import LOCAL_TZ
 
 class CacheMissError(Exception):
     """Raised when required data is not available in the cache."""
@@ -67,12 +67,13 @@ def _is_data_type_relevant_at_time(data_type: str, now_utc: datetime.datetime) -
     
     Args:
         data_type: The type of data ("zmanim", "weather", "calendar", "chores", "seating")
-        now: The current datetime to check relevance for
+        now_utc: The current datetime to check relevance for
         
     Returns:
         True if the data type is relevant for display at the given time
     """
-    now = now_utc.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Jerusalem"))
+    assert(now.tzinfo is None or now.tzinfo.utcoffset(now) == datetime.timedelta(0)), "now_utc must be timezone-aware in UTC"
+    now = now_utc.replace(tzinfo=LOCAL_TZ)
     wkday = now.weekday()
     hour = now.hour
     
@@ -101,25 +102,25 @@ def collect_all_data_task():
     Called every DATA_REFRESH_INTERVAL by the scheduler.
     Each data type is only refreshed if it has expired.
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
     _logger.info("Starting scheduled data collection task")
 
     data_types = [
-        ("zmanim", lambda: efrat_zmanim.collect_data(now=now)),
-        ("weather", lambda: weather.collect_data(now=now)),
+        ("zmanim", lambda: efrat_zmanim.collect_data(now_utc=now_utc)),
+        ("weather", lambda: weather.collect_data(now_utc=now_utc)),
         ("calendar", lambda: my_calendar.collect_data()),
-        ("chores", lambda: chores.collect_data(now=now)),
-        ("seating", lambda: seating.collect_data(now=now)),
+        ("chores", lambda: chores.collect_data(now_utc=now_utc)),
+        ("seating", lambda: seating.collect_data(now_utc=now_utc)),
     ]
 
     for data_type, fetch_fn in data_types:
         try:
             # Check if data is expired
-            if data_cache.is_data_expired(data_type, now=now):
+            if data_cache.is_data_expired(data_type, now_utc=now_utc):
                 _logger.info(f"Collecting fresh {data_type} data")
                 data = fetch_fn()
                 if data is not None:
-                    data_cache.save_cached_data(data_type, data, now=now)
+                    data_cache.save_cached_data(data_type, data, now_utc=now_utc)
             else:
                 _logger.debug(f"Skipping {data_type} - still fresh")
         except Exception as ex:
@@ -255,15 +256,15 @@ def render_html_template_single_color(color: str, html_content: str) -> Path:
     return out_path
 
 
-def is_tset_soon(tset_shabat: datetime.datetime, now: datetime.datetime) -> bool:
+def is_tset_soon(tset_shabat: datetime.datetime, now_utc: datetime.datetime) -> bool:
     if not tset_shabat:
         return False
     TSET_IS_SOON = datetime.timedelta(hours=2)
-    diff: datetime.timedelta = tset_shabat.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Jerusalem")) - now
+    diff: datetime.timedelta = tset_shabat - now_utc
     return diff.total_seconds() > 0 and diff <= TSET_IS_SOON
 
 
-def omer_count(now: datetime.datetime, now_is_after_starlight: bool): 
+def omer_count(now_utc: datetime.datetime, now_is_after_starlight: bool): 
 
     def calc_omer_count(today: datetime.date) -> Optional[int]:
         today_heb = dates.HebrewDate.from_pydate(today)
@@ -276,9 +277,9 @@ def omer_count(now: datetime.datetime, now_is_after_starlight: bool):
             return None
         return delta.days
 
-    today = now.date()
+    today = now_utc.date()
     LAST_SECOND = datetime.time(hour=23, minute=59, second=59)
-    if now_is_after_starlight and now.time() <= LAST_SECOND:
+    if now_is_after_starlight and now_utc.time() <= LAST_SECOND:
         # show the count for tomorrow, since it's already time for it
         today = today + datetime.timedelta(days=1)
     count = calc_omer_count(today)
@@ -292,7 +293,7 @@ def omer_count(now: datetime.datetime, now_is_after_starlight: bool):
     return display_text
 
 
-def _is_now_after_starlight(now: datetime.datetime, tzet_shabbat: Optional[str]) -> bool:
+def _is_now_after_starlight(now_utc: datetime.datetime, tzet_shabbat: Optional[str]) -> bool:
     """
     Returns true if `now` is after the stars have come out.
     Used for checking if Shabbat is already over.
@@ -304,7 +305,7 @@ def _is_now_after_starlight(now: datetime.datetime, tzet_shabbat: Optional[str])
     minute_s = starlight_estimate_s[3:5]
     starlight = datetime.time(hour=int(hour_s), minute=int(minute_s))
     print(f"'{starlight=}'")
-    if now.time() > starlight:
+    if now_utc.time() > starlight:
         return True
     return False
 
@@ -316,9 +317,9 @@ def collect_all_values_of_data(
     chores_content: chores.ChoreData,
     seating_content: seating.SeatingData,
     color: str,
-    now: datetime.datetime,
+    now_utc: datetime.datetime,
 ) -> Dict[str, Any]:
-    heb_date = dates.HebrewDate.from_pydate(now.date())
+    heb_date = dates.HebrewDate.from_pydate(now_utc.date())
     if zmanim:
         try:
             parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
@@ -337,8 +338,8 @@ def collect_all_values_of_data(
     else:
         print("Warning: no zmanim data available.")
 
-    now_is_after_starlight = _is_now_after_starlight(now=now, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
-    omer = omer_count(now=now, now_is_after_starlight=now_is_after_starlight)
+    now_is_after_starlight = _is_now_after_starlight(now_utc=now_utc, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
+    omer = omer_count(now_utc=now_utc, now_is_after_starlight=now_is_after_starlight)
 
     weather_dict = {"weather_report": ""}
     try:
@@ -353,7 +354,7 @@ def collect_all_values_of_data(
         weather_dict["weather_report"] = msg
         print(msg)
 
-    if zmanim and is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now):
+    if zmanim and is_tset_soon(zmanim.times.get("tset_shabat_as_datetime", None), now_utc=now_utc):
         additional_css = """
             #shul { display: none; }
             #test-big { display: block; }
@@ -362,10 +363,11 @@ def collect_all_values_of_data(
         additional_css = """
             #tset-big { display: none; }
         """
+    now_local = now_utc.astimezone(LOCAL_TZ)
     page_dict = {
-        "day_of_week": now.date().strftime("%A"),
-        "date": now.date().strftime("%-d of %B %Y"),
-        "render_timestamp": now.strftime("%Y-%d-%m %H:%M:%S"),
+        "day_of_week": now_local.date().strftime("%A"),
+        "date": now_local.date().strftime("%-d of %B %Y"),
+        "render_timestamp": now_local.strftime("%Y-%d-%m %H:%M:%S"),
         "heb_date": heb_date.hebrew_date_string(),
         "additional_css": additional_css,
     }
@@ -375,7 +377,7 @@ def collect_all_values_of_data(
         chores_str = chores_content.error
     else:
         chores_str = chores.render_chores(
-            chores=chores_content.chores, now=now, color=color
+            chores=chores_content.chores, now_utc=now_utc, color=color
         )
     chores_dict = {
         "chores_content": chores_str,
@@ -437,9 +439,9 @@ def load_template_from_file(file: Path) -> Tuple[Template, List[str]]:
     return (template, template_required_keys)
 
 
-def load_template_by_time(now: datetime.datetime) -> Tuple[Template, List[str]]:
-    wkday = now.weekday()
-    hour = now.hour
+def load_template_by_time(now_utc: datetime.datetime) -> Tuple[Template, List[str]]:
+    wkday = now_utc.weekday()
+    hour = now_utc.hour
 
     # Default template is shabbat
     template_path = Path("/app/assets/layout-shabbat.html")
@@ -468,8 +470,8 @@ def find_missing_template_keys(
     return missing_keys
 
 
-def generate_html_content(color: str, now: datetime.datetime, force_refresh: bool = False) -> str:
-    collected = collect_data(now=now, force_refresh=force_refresh)
+def generate_html_content(color: str, now_utc: datetime.datetime, force_refresh: bool = False) -> str:
+    collected = collect_data(now_utc=now_utc, force_refresh=force_refresh)
     try:
         all_values = collect_all_values_of_data(
             zmanim=collected.zmanim,
@@ -478,7 +480,7 @@ def generate_html_content(color: str, now: datetime.datetime, force_refresh: boo
             chores_content=collected.chores_content,
             seating_content=collected.seating_content,
             color=color,
-            now=now,
+            now_utc=now_utc,
         )
     # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
     except Exception as ex:
@@ -486,7 +488,7 @@ def generate_html_content(color: str, now: datetime.datetime, force_refresh: boo
         # TODO: indent the exception under the warning
         traceback.print_exc()
         all_values = {"Error": str(ex)}
-    (template, template_required_keys) = load_template_by_time(now=now)
+    (template, template_required_keys) = load_template_by_time(now_utc=now_utc)
     missing_keys = find_missing_template_keys(
         all_values=all_values, template_required_keys=template_required_keys
     )
@@ -497,8 +499,8 @@ def generate_html_content(color: str, now: datetime.datetime, force_refresh: boo
     return template.substitute(**all_values)
 
 
-def render_html_template(color: str, now: datetime.datetime, force_refresh: bool = False):
-    html_content = generate_html_content(color=color, now=now, force_refresh=force_refresh)
+def render_html_template(color: str, now_utc: datetime.datetime, force_refresh: bool = False):
+    html_content = generate_html_content(color=color, now_utc=now_utc, force_refresh=force_refresh)
     render_html_template_single_color(color=color, html_content=html_content)
 
 
@@ -520,13 +522,13 @@ class PageData:
     seating_content: seating.SeatingData
 
 
-def get_cached_data_or_error(data_type: str, now: datetime.datetime, force_refresh: bool = False) -> Any:
+def get_cached_data_or_error(data_type: str, now_utc: datetime.datetime, force_refresh: bool = False) -> Any:
     """
     Retrieve data from cache, or fetch fresh if force_refresh is True.
 
     Args:
         data_type: The type of data to retrieve
-        now: Current time for reference
+        now_utc: Current time for reference
         force_refresh: If True, bypass cache and fetch fresh data
 
     Returns:
@@ -539,32 +541,32 @@ def get_cached_data_or_error(data_type: str, now: datetime.datetime, force_refre
         # Bypass cache and fetch fresh data
         _logger.info(f"force_refresh=True, fetching fresh {data_type} data")
         if data_type == "zmanim":
-            return efrat_zmanim.collect_data(now=now)
+            return efrat_zmanim.collect_data(now_utc=now_utc)
         elif data_type == "weather":
-            return weather.collect_data(now=now)
+            return weather.collect_data(now_utc=now_utc)
         elif data_type == "calendar":
             return my_calendar.collect_data()
         elif data_type == "chores":
-            return chores.collect_data(now=now)
+            return chores.collect_data(now_utc=now_utc)
         elif data_type == "seating":
-            return seating.collect_data(now=now)
+            return seating.collect_data(now_utc=now_utc)
     
     # Try to get from cache
-    cached_result = data_cache.get_cached_data(data_type, now=now)
+    cached_result = data_cache.get_cached_data(data_type, now_utc=now_utc)
     if cached_result:
         data, timestamp = cached_result
         return data
     
     # Data not in cache
-    raise CacheMissError(f"No cached data available for {data_type}")
+    raise CacheMissError(f"No cached data available for {data_type}. Try again with \"force_refresh=true\".")
 
 
-def collect_data(now: datetime.datetime, force_refresh: bool = False):
+def collect_data(now_utc: datetime.datetime, force_refresh: bool = False):
     """
     Collect all page data from cache.
 
     Args:
-        now: Current time for reference
+        now_utc: Current time for reference
         force_refresh: If True, bypass cache and fetch fresh data for all sources
 
     Returns:
@@ -574,17 +576,17 @@ def collect_data(now: datetime.datetime, force_refresh: bool = False):
         CacheMissError: If any required data is not in cache (unless force_refresh=True)
     """
     return PageData(
-        zmanim=get_cached_data_or_error("zmanim", now=now, force_refresh=force_refresh),
-        weather_forecast=get_cached_data_or_error("weather", now=now, force_refresh=force_refresh),
-        calendar_content=get_cached_data_or_error("calendar", now=now, force_refresh=force_refresh),
-        chores_content=get_cached_data_or_error("chores", now=now, force_refresh=force_refresh),
-        seating_content=get_cached_data_or_error("seating", now=now, force_refresh=force_refresh),
+        zmanim=get_cached_data_or_error("zmanim", now_utc=now_utc, force_refresh=force_refresh),
+        weather_forecast=get_cached_data_or_error("weather", now_utc=now_utc, force_refresh=force_refresh),
+        calendar_content=get_cached_data_or_error("calendar", now_utc=now_utc, force_refresh=force_refresh),
+        chores_content=get_cached_data_or_error("chores", now_utc=now_utc, force_refresh=force_refresh),
+        seating_content=get_cached_data_or_error("seating", now_utc=now_utc, force_refresh=force_refresh),
     )
 
 
-def render_one_color(color: str, now: datetime.datetime, force_refresh: bool = False):
+def render_one_color(color: str, now_utc: datetime.datetime, force_refresh: bool = False):
     color = untaint_filename(color)
-    render_html_template(color=color, now=now, force_refresh=force_refresh)
+    render_html_template(color=color, now_utc=now_utc, force_refresh=force_refresh)
     filename = get_filename(color=color)
 
 _DATETIME_FORMAT_IN_URL = "%Y%m%d-%H%M%S"
@@ -604,7 +606,7 @@ async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bo
     if at:
         now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
     try:
-        html = generate_html_content(color=color.value, now=now, force_refresh=force_refresh)
+        html = generate_html_content(color=color.value, now_utc=now, force_refresh=force_refresh)
     except CacheMissError as e:
         raise HTTPException(
             status_code=503,
@@ -618,7 +620,7 @@ async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bo
 async def render_endpoint(color: ColorName, force_refresh: bool = False):
     now = datetime.datetime.now(datetime.timezone.utc)
     try:
-        render_one_color(color=color.value, now=now, force_refresh=force_refresh)
+        render_one_color(color=color.value, now_utc=now, force_refresh=force_refresh)
     except CacheMissError as e:
         raise HTTPException(
             status_code=503,
@@ -645,7 +647,7 @@ async def eink(color: ColorName, at: Optional[str] = None, force_refresh: bool =
     try:
         # always render "joined", since it's for dev work
         if color_str == "joined" or color_str == "black":
-            render_one_color(color=color_str, now=now, force_refresh=force_refresh)
+            render_one_color(color=color_str, now_utc=now, force_refresh=force_refresh)
     except CacheMissError as e:
         raise HTTPException(
             status_code=503,

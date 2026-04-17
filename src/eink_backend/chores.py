@@ -139,7 +139,7 @@ EMPTY_CHORES = "-no chores data-"
 SHEETS_ERROR = "-error getting chores from Google Sheets-"
 
 
-def collect_data(now: datetime) -> ChoreData:
+def collect_data(now_utc: datetime) -> ChoreData:
     try:
         chores = get_chores_from_spreadsheet()
     except Exception as ex:
@@ -170,7 +170,7 @@ def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
         return TABLE[DEFAULT]
 
 
-def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
+def render_chores(chores: List[Chore], now_utc: datetime, color: str) -> str:
     # Sort the chores:
     # - unassigned items are last
     # - by assignee name
@@ -190,7 +190,7 @@ def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
         )
     )
 
-    today = now.date()
+    today = now_utc.date()
     chores_str = ""
     for chore in chores:
         if chore.due > today:
@@ -235,6 +235,6 @@ def render_chores(chores: List[Chore], now: datetime, color: str) -> str:
 
 # python3 -m eink_backend.chores
 if __name__ == "__main__":
-    # out = collect_data(now=datetime.datetime(year=2023, month=12, day=15, hour=10, minute=00))
-    out = collect_data(now=datetime.datetime.now())
+    # out = collect_data(now_utc=datetime.datetime(year=2023, month=12, day=15, hour=10, minute=00))
+    out = collect_data(now_utc=datetime.datetime.now())
     print(out)

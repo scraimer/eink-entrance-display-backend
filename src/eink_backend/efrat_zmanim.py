@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Union
 
+from .config import LOCAL_TZ
 
 @dataclass
 class ShabbatZmanim:
@@ -32,22 +33,23 @@ def kbalat_shabat_from_candle_lighting(candle_lighting: str) -> str:
 
 
 def find_nearest_shabbat_or_yom_tov(
-    now: datetime,
+    now_utc: datetime,
     db_json: str = Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"),
 ) -> ShabbatZmanim:
+    now_local = now_utc.astimezone(LOCAL_TZ)
     efrat_zmanim = json.loads(db_json)
     HOW_MANY_DAYS_TO_LOOK_AHEAD = 8
     DAY = timedelta(days=1)
     day_zmanims: List[Dict[str, Union[str, datetime]]] = []
     for i in range(HOW_MANY_DAYS_TO_LOOK_AHEAD):
-        day = now.date() + (i * DAY)
+        day = now_local.date() + (i * DAY)
         if day.weekday() == 5:  # Saturday
             found = [z for z in find_zmanim_for_day(day, efrat_zmanim)]
             if found:
                 for z in found:
                     z["shabbat"] = True
                     z["datetime"] = datetime.combine(
-                        date=day, time=time(), tzinfo=now.tzinfo
+                        date=day, time=time(), tzinfo=now_local.tzinfo
                     )
                 day_zmanims += found
     if len(day_zmanims) > 0:
@@ -77,15 +79,15 @@ def find_nearest_shabbat_or_yom_tov(
 
 
 def collect_data(
-    now: datetime,
+    now_utc: datetime,
     db_json: str = Path(ZMANIM_DB_SRC).read_text(encoding="utf-8"),
 ) -> ShabbatZmanim:
-    return find_nearest_shabbat_or_yom_tov(now=now, db_json=db_json)
+    return find_nearest_shabbat_or_yom_tov(now_utc=now_utc, db_json=db_json)
 
 
 if __name__ == "__main__":
     print(
         collect_data(
-            now=datetime(year=2024, month=11, day=8, hour=16, minute=0, second=0)
+            now_utc=datetime(year=2024, month=11, day=8, hour=16, minute=0, second=0)
         )
     )

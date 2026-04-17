@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import zoneinfo
 
 
 @dataclass
@@ -56,3 +57,5 @@ config = Config(
         json_file=google_sheets_auth_json,
     ),
 )
+
+LOCAL_TZ = zoneinfo.ZoneInfo("Asia/Jerusalem")

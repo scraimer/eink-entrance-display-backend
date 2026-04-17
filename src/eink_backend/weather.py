@@ -346,15 +346,15 @@ class TemperatureAtTime:
     temperature: int
 
 
-def collect_data(now: datetime) -> Optional[WeatherForecast]:
+def collect_data(now_utc: datetime) -> Optional[WeatherForecast]:
     try:
-        return _collect_data_impl(now)
+        return _collect_data_impl(now_utc)
     except Exception as ex:
         print(f"Error getting weather data: {ex}")
         return None
 
 
-def _collect_data_impl(now: datetime) -> WeatherForecast:
+def _collect_data_impl(now_utc: datetime) -> WeatherForecast:
     # Setup: The API key you got from the open-meteo.com website, save it
     #        as `SECRETS_OPEN_METEO_API_KEY` in the file `.secrets`
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
@@ -565,7 +565,7 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
 
 
 if __name__ == "__main__":
-    forecast = collect_data(now=datetime.now())
+    forecast = collect_data(now_utc=datetime.now())
     if forecast is None:
         sys.exit(1)
     # print(forecast)

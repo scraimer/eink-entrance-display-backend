@@ -22,9 +22,9 @@ T = TypeVar('T')
 _logger: logging.Logger = None
 """This is the logger that the data_cache uses"""
 
-def _humanize_age(now: datetime.datetime, timestamp: datetime.datetime) -> str:
+def _humanize_age(now_utc: datetime.datetime, timestamp: datetime.datetime) -> str:
     """Return a compact human-readable age string."""
-    delta_seconds = max(0, int((now - timestamp).total_seconds()))
+    delta_seconds = max(0, int((now_utc - timestamp).total_seconds()))
 
     if delta_seconds < 60:
         return "less than a minute"
@@ -89,13 +89,13 @@ def clean_expired_records(older_than_days: int = 30):
         _logger.info(f"Deleted {deleted_count} expired cache records older than {older_than_days} days")
 
 
-def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple[Any,datetime.datetime]]:
+def get_cached_data(data_type: str, now_utc: datetime.datetime) -> Optional[tuple[Any,datetime.datetime]]:
     """
     Retrieve cached data if it hasn't expired.
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
-        now: The reference time to check expiration (should be UTC timezone-aware).
+        now_utc: The reference time to check expiration (should be UTC timezone-aware).
 
     Returns:
         tuple: (data, timestamp) if valid cached data exists, None otherwise.
@@ -106,7 +106,7 @@ def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple[An
 
     cursor.execute(
         "SELECT data, timestamp FROM data_cache WHERE data_type = ? AND expiration > ?",
-        (data_type, now)
+        (data_type, now_utc)
     )
 
     result = cursor.fetchone()
@@ -126,14 +126,14 @@ def get_cached_data(data_type: str, now: datetime.datetime) -> Optional[tuple[An
     return None
 
 
-def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
+def save_cached_data(data_type: str, data: T, now_utc: datetime.datetime) -> None:
     """
     Save data to cache with its expiration time.
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
         data: The data to cache
-        now: The reference time to calculate expiration (should be UTC timezone-aware).
+        now_utc: The reference time to calculate expiration (should be UTC timezone-aware).
     """
     if data_type not in EXPIRATION_HOURS:
         _logger.warning(f"Unknown data type: {data_type}")
@@ -142,7 +142,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     conn = sqlite3.connect(str(DB_PATH))
     cursor = conn.cursor()
 
-    expiration = now + datetime.timedelta(hours=EXPIRATION_HOURS[data_type])
+    expiration = now_utc + datetime.timedelta(hours=EXPIRATION_HOURS[data_type])
 
     data_blob = pickle.dumps(data)
 
@@ -155,7 +155,7 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
             timestamp = excluded.timestamp,
             expiration = excluded.expiration
         """,
-        (data_type, data_blob, now.isoformat(), expiration.isoformat())
+        (data_type, data_blob, now_utc.isoformat(), expiration.isoformat())
     )
 
     conn.commit()
@@ -164,13 +164,13 @@ def save_cached_data(data_type: str, data: T, now: datetime.datetime) -> None:
     _logger.info(f"Cached {data_type} data, expires at {expiration.isoformat()}")
 
 
-def is_data_expired(data_type: str, now: datetime.datetime) -> bool:
+def is_data_expired(data_type: str, now_utc: datetime.datetime) -> bool:
     """
     Check if cached data has expired or doesn't exist.
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
-        now: The reference time to check expiration (should be UTC timezone-aware)
+        now_utc: The reference time to check expiration (should be UTC timezone-aware)
 
     Returns:
         True if data is missing or expired, False if valid and fresh
@@ -178,36 +178,36 @@ def is_data_expired(data_type: str, now: datetime.datetime) -> bool:
     if data_type not in EXPIRATION_HOURS:
         return True
 
-    cached_result = get_cached_data(data_type, now=now)
-    _logger.debug(f"is_data_expired(): data_type={data_type}, now={now.isoformat()}, cached_result={'found' if cached_result else 'not found or expired'}, cached_data_age={_humanize_age(now=now, timestamp=cached_result[1]) if cached_result else 'N/A'}")
+    cached_result = get_cached_data(data_type, now_utc=now_utc)
+    _logger.debug(f"is_data_expired(): data_type={data_type}, now_utc={now_utc.isoformat()}, cached_result={'found' if cached_result else 'not found or expired'}, cached_data_age={_humanize_age(now_utc=now_utc, timestamp=cached_result[1]) if cached_result else 'N/A'}")
     if cached_result is None:
         return True
     
     _, timestamp = cached_result
-    if timestamp + datetime.timedelta(hours=EXPIRATION_HOURS[data_type]) <= now:
+    if timestamp + datetime.timedelta(hours=EXPIRATION_HOURS[data_type]) <= now_utc:
         return True
 
     return False
 
 
-def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.datetime) -> T:
+def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now_utc: datetime.datetime) -> T:
     """
     Get data from cache if valid, otherwise fetch using the provided function and cache it.
 
     Args:
         data_type: The type of data (e.g., 'weather', 'zmanim')
         fetch_fn: A callable that fetches the data if not cached
-        now: The reference time for cache expiration checks (should be UTC timezone-aware).
+        now_utc: The reference time for cache expiration checks (should be UTC timezone-aware).
 
     Returns:
         The cached or freshly fetched data
     """
 
     # Check if we have valid cached data
-    cached_result = get_cached_data(data_type, now=now)
+    cached_result = get_cached_data(data_type, now_utc=now_utc)
     if cached_result:
         data, timestamp = cached_result
-        age = _humanize_age(now=now, timestamp=timestamp)
+        age = _humanize_age(now_utc=now_utc, timestamp=timestamp)
         _logger.info(f"Using cached {data_type} data from {timestamp.isoformat()} ({age} old)")
         return data
 
@@ -217,6 +217,6 @@ def cache_or_fetch(data_type: str, fetch_fn: Callable[[], T], now: datetime.date
 
     # Save to cache if data is not None
     if data is not None:
-        save_cached_data(data_type, data, now=now)
+        save_cached_data(data_type, data, now_utc=now_utc)
 
     return data

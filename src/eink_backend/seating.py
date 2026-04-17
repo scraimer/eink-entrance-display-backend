@@ -74,9 +74,9 @@ def get_seating_from_spreadsheet() -> SeatingDataFromSpreadsheet:
     )
 
 
-def rotate_seats(now: datetime, seat_db: SeatingDataFromSpreadsheet) -> List[Seat]:
+def rotate_seats(now_utc: datetime, seat_db: SeatingDataFromSpreadsheet) -> List[Seat]:
     DAYS_IN_WEEK = 7
-    weeks_since_start = (now.date() - seat_db.start_date).days / DAYS_IN_WEEK
+    weeks_since_start = (now_utc.date() - seat_db.start_date).days / DAYS_IN_WEEK
     # Every week is 2 rotations. And there's one rotation between supper and lunch.
     rotations = int(weeks_since_start) * 2 + (
         0 if weeks_since_start.is_integer() else 1
@@ -105,7 +105,7 @@ def rotate_seats(now: datetime, seat_db: SeatingDataFromSpreadsheet) -> List[Sea
 SHEETS_ERROR = "-error getting seating from Google Sheets-"
 
 
-def collect_data(now: datetime) -> SeatingData:
+def collect_data(now_utc: datetime) -> SeatingData:
     try:
         seat_db = get_seating_from_spreadsheet()
     except Exception as ex:
@@ -115,13 +115,13 @@ def collect_data(now: datetime) -> SeatingData:
         # (but only if a notice hasn't been sent in the past day)
         return SeatingData(seats=[], error=SHEETS_ERROR)
 
-    seats = rotate_seats(now=now, seat_db=seat_db)
+    seats = rotate_seats(now_utc=now_utc, seat_db=seat_db)
     return SeatingData(seats=seats)
 
 
 # python3 -m eink_backend.chores
 if __name__ == "__main__":
-    # out = collect_data(now=datetime.datetime.now())
+    # out = collect_data(now_utc=datetime.datetime.now())
 
     dates = {
         "1-supper": datetime.datetime(year=2024, month=4, day=5, hour=0, minute=0),
@@ -143,6 +143,6 @@ if __name__ == "__main__":
         ],
     )
     for k, d in dates.items():
-        out = rotate_seats(now=d, seat_db=seat_db)
+        out = rotate_seats(now_utc=d, seat_db=seat_db)
         o = ",".join([f"{s.name}={s.number}" for s in out])
         print(f"{k} = {o}")
