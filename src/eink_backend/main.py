@@ -56,7 +56,7 @@ out_dir = Path("/tmp/eink-display")
 out_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _is_data_type_relevant_at_time(data_type: str, now: datetime.datetime) -> bool:
+def _is_data_type_relevant_at_time(data_type: str, now_utc: datetime.datetime) -> bool:
     """
     Determine if a data type is relevant for display at the given time.
     
@@ -72,6 +72,7 @@ def _is_data_type_relevant_at_time(data_type: str, now: datetime.datetime) -> bo
     Returns:
         True if the data type is relevant for display at the given time
     """
+    now = now_utc.replace(tzinfo=zoneinfo.ZoneInfo("Asia/Jerusalem"))
     wkday = now.weekday()
     hour = now.hour
     
@@ -819,3 +820,9 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
         "client_last_updated_at": client_last_updated_at,
         "changes": changes_report
     }
+
+#if __name__ == "__main__":
+#    now_utc = datetime.datetime.now(datetime.timezone.utc)
+#    breakpoint()
+#    _is_data_type_relevant_at_time("seating", now_utc)
+
