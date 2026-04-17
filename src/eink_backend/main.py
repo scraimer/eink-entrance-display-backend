@@ -81,6 +81,7 @@ def _is_data_type_relevant_at_time(data_type: str, now_utc: datetime.datetime) -
     if data_type in ("zmanim", "weather", "calendar"):
         return True
     
+    # TODO: Make sure this times match the template-choosing code
     # Conditional data types
     if data_type == "chores":
         # Chores are shown Friday until 16:00
@@ -440,8 +441,9 @@ def load_template_from_file(file: Path) -> Tuple[Template, List[str]]:
 
 
 def load_template_by_time(now_utc: datetime.datetime) -> Tuple[Template, List[str]]:
-    wkday = now_utc.weekday()
-    hour = now_utc.hour
+    now_local = now_utc.astimezone(LOCAL_TZ)
+    wkday = now_local.weekday()
+    hour = now_local.hour
 
     # Default template is shabbat
     template_path = Path("/app/assets/layout-shabbat.html")
