@@ -604,17 +604,17 @@ async def html_dev(color: ColorName, at: Optional[str] = None, force_refresh: bo
         at: Optional datetime to render (format: "%Y%m%d-%H%M%S", must be UTC timezone). Defaults to current UTC time.
         force_refresh: If True, bypass cache and fetch fresh data
     """
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
     if at:
-        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
+        now_utc = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL).replace(tzinfo=datetime.timezone.utc)
     try:
-        html = generate_html_content(color=color.value, now_utc=now, force_refresh=force_refresh)
+        html = generate_html_content(color=color.value, now_utc=now_utc, force_refresh=force_refresh)
     except CacheMissError as e:
         raise HTTPException(
             status_code=503,
             detail=str(e)
         )
-    now_as_string = f'<!-- at={now.strftime(_DATETIME_FORMAT_WITH_TZ)} -->\n'
+    now_as_string = f'<!-- at={now_utc.strftime(_DATETIME_FORMAT_WITH_TZ)} -->\n'
     return now_as_string + html
 
 
@@ -643,13 +643,13 @@ async def eink(color: ColorName, at: Optional[str] = None, force_refresh: bool =
     """
     color_str = color.value
     color_str = untaint_filename(color_str)
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
     if at:
-        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
+        datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL).replace(tzinfo=datetime.timezone.utc)
     try:
         # always render "joined", since it's for dev work
         if color_str == "joined" or color_str == "black":
-            render_one_color(color=color_str, now_utc=now, force_refresh=force_refresh)
+            render_one_color(color=color_str, now_utc=now_utc, force_refresh=force_refresh)
     except CacheMissError as e:
         raise HTTPException(
             status_code=503,
@@ -765,12 +765,9 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
     
     _logger.info(f"Received /what-has-changed request with client_last_updated_at={client_last_updated_at} and at={at}")
 
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
     if at:
-        now = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL)
-        # Ensure timezone-aware by adding UTC if naive
-        if now.tzinfo is None:
-            now = now.replace(tzinfo=datetime.timezone.utc)
+        now_utc = datetime.datetime.strptime(at, _DATETIME_FORMAT_IN_URL).replace(tzinfo=datetime.timezone.utc)
     
     client_last_updated_at_dt = None
     if client_last_updated_at:
@@ -808,7 +805,7 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
                 _logger.warning("client_last_updated_at is not provided, cannot determine if data has changed. Defaulting to False.")
             
             # Determine if this data type is relevant to the display at the given time
-            is_relevant = _is_data_type_relevant_at_time(data_type, now)
+            is_relevant = _is_data_type_relevant_at_time(data_type, now_utc)
             
             changes_report[data_type] = {
                 "updated_at": timestamp.isoformat(),
@@ -820,7 +817,7 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
         changes_report["error_stack_trace"] = traceback.format_exc()
     
     return {
-        "now": now.isoformat(),
+        "now": now_utc.isoformat(),
         "client_last_updated_at": client_last_updated_at,
         "changes": changes_report
     }
