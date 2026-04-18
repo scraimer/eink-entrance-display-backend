@@ -3,10 +3,8 @@ version: '3'
 vars:
   PROD_PORT: 8321
   DEV_PORT: 8323
-  PROD_IMAGE: eink-entrance-display-backend:latest
   DEBUG_IMAGE: eink-entrance-display-backend-debug:latest
   PROD_CONTAINER_NAME: eink_backend_prod
-  DEV_CONTAINER_NAME: eink_backend_dev
 
 tasks:
   build_base_docker_container:
@@ -14,53 +12,35 @@ tasks:
     cmds:
       - docker build --tag eink-entrance-display-backend-base:latest deploy/docker-containers/base
 
-  build_docker:
-    desc: Build the docker
+  daemon_run:
+    desc: Run the application so it restarts on reboot
     cmds:
-      - task: build_base_docker_container
-      - docker build --tag {{.PROD_IMAGE}} deploy/docker-containers/prod
+      - docker run -d --name {{.PROD_CONTAINER_NAME}} --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} {{.DEBUG_IMAGE}}
 
-  run_docker_daemon:
-    desc: Run the docker so it restarts on reboot
-    cmds:
-      - docker run -d --name {{.PROD_CONTAINER_NAME}} --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} {{.PROD_IMAGE}}
-
-  debug_build_docker:
+  docker_build:
     desc: Build the docker, while preserving intermediate layers
     cmds:
       - task: build_base_docker_container
       - docker build --tag {{.DEBUG_IMAGE}} --rm=false deploy/docker-containers/debug
 
-  debug_run_docker:
+  docker_run:
     desc: Run the docker, interactive for debugging (press CTRL-C to exit)
     cmds:
-      - docker run -it --name {{.PROD_CONTAINER_NAME}} --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
+      - docker run -it --name {{.PROD_CONTAINER_NAME}} --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
 
-  debug_dev_run_docker:
-    desc: Run the docker, interactive for debugging (press CTRL-C to exit)
-    cmds:
-      #- docker run -it --restart unless-stopped --publish {{.PROD_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
-      - docker run -it --name {{.DEV_CONTAINER_NAME}} --publish {{.DEV_PORT}}:{{.PROD_PORT}} --mount type=bind,source="$(pwd)",target=/app {{.DEBUG_IMAGE}}
-
-  debug_run:
-    desc: Run the server outside the server, for debugging (inside devcontainer only)
-    cmds:
-      - /usr/local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.DEV_PORT}}
-
-  stop_docker:
+  docker_stop:
     desc: Stop the prod docker container
     cmds:
       - docker stop {{.PROD_CONTAINER_NAME}}
       - docker container rm {{.PROD_CONTAINER_NAME}}
 
-  stop_dev_docker:
-    desc: Stop the dev docker container
+  dev_debug_run:
+    desc: (inside devcontainer only) Run the server outside the server, for debugging 
     cmds:
-      - docker stop {{.DEV_CONTAINER_NAME}}
-      - docker container rm {{.DEV_CONTAINER_NAME}}
+      - /usr/local/bin/uvicorn src.eink_backend.main:app --reload --host 0.0.0.0 --port {{.DEV_PORT}}
 
-  run_tests:
-    desc: Build debug docker and run the tests (inside devcontainer only)
+  dev_run_tests:
+    desc: (inside devcontainer only) Build debug docker and run the tests
     cmds:
       - bash -c "cd /app; pytest"
 
