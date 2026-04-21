@@ -10,6 +10,53 @@
 
 ## Wishlist / Ideas
 
+### Weather
+
+* Check weather - am I showing the correct times? Has the switch to UTC shifted the weather I'm showing? Am I showing for 13:00 the weather for 13:00 or for 10:00? Check by reading from their API and seeing when the first hourly is, that should be for the current hour. I hope.
+
+* Show the temperature for the rest of the day not just in certain hours. Some way to show all the expected temperatures, not just certain hours. Maybe a graph.
+
+* Show Air quality
+
+* Show speed of wind and direction. Maybe only when it's important (like too windy. Don't mention it when it's slow. Unless I'd like to know if there's no wind on a hot day, to make sure I turn on the A/C when we have guests.)
+
+What do I want?
+
+* Show interesting peaks.
+  * If it rains at only one point of the day.
+    * If it's raining all day, or all the times I'm outside, then just mark it as rain.
+* Actually, I also want minumums below a threshold. Like, if the temperature was high and only goes below 28C at 16:00, that's interesting. If it's over 40% rain and that drops to under 10% , that's interesting.
+* Maybe I should classify items of interest as "bad weather". And find when we enter such a zone, and when we exit such a zone.
+  * Rain
+    * under 10% is not interesting
+    * over 40% is bad weather
+  * Heat
+    * Under 15C is interesting if the day is warm (say, over 25C)
+    * Under 2C is bad weather.
+    * But 8C is not bad weather in a day that's average of 15C. It's just a bit colder.
+    * Over 30C is bad weather. Unless the last few days were over 34C. Then it's an improvement.
+  * UV
+  * Wind
+
+* Use different times for Sun-Thr, Fri, and Saturary.
+  Sun-Thr: Show leaving and returning from school, pickup, and maybe evening.
+    Must: 07:00-08:00, 14:00, 16:00
+    Maybe: 18:00-22:00 in overview
+  Fri: School, pickup, Park prayer (note especially the rain, temp, and wind)
+    07:00-08:00, 11:00-13:00, 18:00-19:00
+  Sat: 08:00-09:00, 11:00, 13:00 (mincha), 16:00-tzet shabbat, every hour, or tell me when it stops raining or stops being hot.
+
+What do I not care about?
+
+* Hours after 22:00 before 07:00 the next day. Don't show for that.
+
+### Zmanim
+
+* Show Rosh Hodesh
+* Show fast-days start/end times.
+
+* Don't show when shabbat is coming in, except for on Friday.
+
 * Create some modular layout mechnism.
 
    * Idea #1: Create HTML files and use the firefox screenshot mechanism to store red and black versions (perhaps set red/black using CSS classes?)
