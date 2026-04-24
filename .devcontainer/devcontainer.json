@@ -38,10 +38,12 @@
 				"ms-python.vscode-pylance",
 				"ms-python.black-formatter",
 				"ms-python.isort",
+				"mtxr.sqltools-driver-sqlite",
 				"eamodio.gitlens",
 				"discretegames.f5anything",
 				"Codder13.openspec",
-				"atman-dev.openspec-for-copilot"
+				"atman-dev.openspec-for-copilot",
+				"yy0931.vscode-sqlite3-editor"
 			]
 		}
 	},

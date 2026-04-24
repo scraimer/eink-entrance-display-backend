@@ -3,6 +3,7 @@ FROM eink-entrance-display-backend-base:latest
 
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    sqlite3 \
     git
 
 # Install go, to install the `task` command
