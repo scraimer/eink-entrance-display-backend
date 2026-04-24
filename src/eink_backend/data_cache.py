@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Optional, TypeVar, Callable
 
 # Database path in the app directory
-DB_PATH = Path("/app/data_cache.db")
+DB_PATH = Path("/app/data_cache.sqlite")
 
 # Data type expiration times (in hours)
 EXPIRATION_HOURS = {

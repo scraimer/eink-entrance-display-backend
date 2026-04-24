@@ -25,6 +25,11 @@ from fastapi.responses import FileResponse, HTMLResponse
 
 from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
 from .config import LOCAL_TZ
+from .chores_db import ChoresDatabase
+from .chores_api import create_chores_router
+from .chores_audit import cleanup_audit_log
+from .chores_ui import generate_chores_ui_html
+from .sync_chores_from_sheets import sync_chores_from_sheets
 
 class CacheMissError(Exception):
     """Raised when required data is not available in the cache."""
@@ -96,6 +101,9 @@ def _is_data_type_relevant_at_time(data_type: str, now_utc: datetime.datetime) -
 # Global scheduler instance
 scheduler: Optional[BackgroundScheduler] = None
 
+# Global chores database instance
+chores_db: Optional[ChoresDatabase] = None
+
 
 def collect_all_data_task():
     """
@@ -131,15 +139,60 @@ def collect_all_data_task():
     _logger.info("Scheduled data collection task completed")
 
 
+def cleanup_audit_log_task():
+    """
+    Background task that cleans up old audit log entries.
+    Runs daily, removing entries older than 365 days.
+    """
+    global chores_db
+    if not chores_db:
+        _logger.warning("Chores database not initialized; skipping audit cleanup")
+        return
+    
+    try:
+        session = chores_db.get_session()
+        try:
+            count = cleanup_audit_log(session, days_to_keep=365)
+            _logger.info(f"Audit log cleanup completed: removed {count} old entries")
+        finally:
+            session.close()
+    except Exception as ex:
+        _logger.error(f"Error cleaning up audit log: {ex}")
+        traceback.print_exc()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize the database on startup, start the scheduler, and clean up on shutdown."""
-    global scheduler
+    global scheduler, chores_db
 
     # Initialize the cache database
     data_cache.init_db(_logger)
     data_cache.clean_expired_records(older_than_days=30)
     _logger.info("Cache database initialized.")
+
+    # Initialize the chores database
+    database_path = root_dir / "chores.sqlite"
+    database_url = f"sqlite:///{database_path}"
+    chores_db = ChoresDatabase(database_url)
+    chores_db.init_db()
+    _logger.info("Chores database initialized.")
+
+    # Register chores router (must happen before OpenAPI schema generation)
+    router = create_chores_router(chores_db)
+    app.include_router(router)
+    _logger.info("Chores API router registered.")
+
+    # Optionally sync chores from Google Sheets on startup
+    if os.getenv("SYNC_CHORES_FROM_SHEETS", "").lower() == "true":
+        try:
+            _logger.info("Syncing chores from Google Sheets...")
+            sync_chores_from_sheets(chores_db)
+            _logger.info("Chores sync from Google Sheets completed.")
+        except Exception as e:
+            _logger.error(f"Error syncing chores from Google Sheets: {e}")
+            # Don't fail startup if sync fails, just log the error
+            pass
 
     # Start the background scheduler
     scheduler = BackgroundScheduler()
@@ -150,6 +203,14 @@ async def lifespan(app: FastAPI):
         id='collect_all_data',
         name=f'Collect all data every {int(_DATA_REFRESH_INTERVAL.total_seconds() / 60)} minutes'
     )
+    scheduler.add_job(
+        cleanup_audit_log_task,
+        'cron',
+        hour=2,
+        minute=0,
+        id='cleanup_audit_log',
+        name='Cleanup old audit log entries daily at 2 AM'
+    )
     scheduler.start()
     _logger.info(f"Background scheduler started (collecting data every {int(_DATA_REFRESH_INTERVAL.total_seconds() / 60)} minutes).")
 
@@ -159,6 +220,11 @@ async def lifespan(app: FastAPI):
     if scheduler and scheduler.running:
         scheduler.shutdown()
         _logger.info("Background scheduler stopped.")
+    
+    # Close the chores database
+    if chores_db:
+        chores_db.close()
+        _logger.info("Chores database closed.")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -166,7 +232,13 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def read_root():
-    return {"Help": "Go to '/docs' for an explanation of the API"}
+    return {"Help": "Go to '/docs' for API docs, or '/chores' for the chores UI"}
+
+
+@app.get("/chores", response_class=HTMLResponse)
+def chores_ui():
+    """Single-page web application for managing chores."""
+    return generate_chores_ui_html()
 
 
 def untaint_filename(filename: str) -> str:

@@ -87,7 +87,7 @@ flowchart TD
 
     Zmanim --> ZmanimJson[assets/efrat_zmanim.json]
     Main --> Templates[assets/layout-*.html + CSS]
-    Cache --> SQLite[/app/data_cache.db]
+    Cache --> SQLite[/app/data_cache.sqlite]
     Render --> ImageCache[/image-cache]
     Main --> Output[/tmp/eink-display/*.png]
 ```
@@ -748,7 +748,7 @@ The runtime creates or uses several important filesystem locations:
 - `/app/tmp/firefox-{color}.png` for the browser screenshot
 - `/tmp/eink-display/{color}.png` for the final output
 - `/image-cache/*` for processed icons and avatars
-- `/app/data_cache.db` for the SQLite cache
+- `/app/data_cache.sqlite` for the SQLite cache
 
 ## Operational Notes and Caveats
 

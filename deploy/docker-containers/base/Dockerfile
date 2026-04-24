@@ -2,8 +2,12 @@ FROM python:3.12-slim-bullseye
 
 RUN apt-get update && \
     apt-get install -y \
-    wget \
     build-essential \
+    libjpeg-dev \
+    libopenjp2-7 \
+    libtiff5 \
+    libfreetype6-dev \
+    wget \
     zlib1g-dev
 
 RUN pip3 uninstall PIL
@@ -13,7 +17,10 @@ RUN pip3 install "uvicorn[standard]"
 RUN pip3 install pytest
 RUN pip3 install bs4
 RUN pip3 install requests
-RUN apt-get install -y libjpeg-dev libopenjp2-7 libtiff5 libfreetype6-dev
+RUN pip3 install sqlalchemy
+RUN pip3 install pydantic
+RUN pip3 install httpx
+RUN apt-get install -y 
 RUN pip3 install pillow
 RUN pip3 install pyluach
 
