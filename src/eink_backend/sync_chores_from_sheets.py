@@ -22,7 +22,7 @@ import pygsheets
 
 from . import config
 from .chores_db import ChoresDatabase, Chore, ChoreState, Person, Ranking, utc_now_iso
-from .chores_audit import audit_insert, audit_delete
+from .chores_audit import audit_insert, audit_delete, audit_update
 
 
 def get_chores_from_spreadsheet() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -66,10 +66,24 @@ def get_chores_from_spreadsheet() -> Tuple[List[Dict[str, Any]], List[Dict[str, 
             # Ensure frequency is at least 1
             if frequency_in_weeks < 1:
                 frequency_in_weeks = 1
-            
+
+            # State fields: 'Index' = last executor ordinal, 'Next time Index' = next executor ordinal
+            index_str = str(src.get("Index", "")).strip()
+            last_executor_ordinal = int(index_str) if index_str.lstrip('-').isdigit() and int(index_str) > 0 else None
+
+            next_index_str = str(src.get("Next time Index", "")).strip()
+            next_executor_ordinal = int(next_index_str) if next_index_str.lstrip('-').isdigit() and int(next_index_str) > 0 else None
+
+            last_execution_date = str(src.get("Last Done At", "")).strip() or None
+            next_execution_date = str(src.get("Due Date", "")).strip() or None
+
             return {
                 "name": name,
                 "frequency_in_weeks": frequency_in_weeks,
+                "last_executor_ordinal": last_executor_ordinal,
+                "next_executor_ordinal": next_executor_ordinal,
+                "last_execution_date": last_execution_date,
+                "next_execution_date": next_execution_date,
             }
         except Exception as e:
             print(f"Error parsing chore record {src}: {e}")
@@ -382,6 +396,98 @@ def insert_rankings(db: ChoresDatabase, rankings_data: List[Dict[str, Any]]) -> 
         session.close()
 
 
+def update_chore_states(
+    db: ChoresDatabase,
+    chores_data: List[Dict[str, Any]],
+    chores_by_name: Dict[str, int],
+) -> int:
+    """Update ChoreState records with state data parsed from Google Sheets.
+
+    Maps ordinal numbers from the sheet ('Index' and 'Next time Index') to
+    person IDs using the people table.
+
+    Args:
+        db: ChoresDatabase instance
+        chores_data: List of chore dicts including state fields from parse_chore
+        chores_by_name: Mapping of chore name -> chore ID (from insert_chores)
+
+    Returns:
+        Number of chore states updated
+    """
+    session = db.get_session()
+    try:
+        all_people = session.query(Person).all()
+        if not all_people:
+            print("Warning: No people found, cannot update chore states")
+            return 0
+
+        ordinal_to_person_id: Dict[int, int] = {p.ordinal: p.id for p in all_people}
+        now = utc_now_iso()
+        count = 0
+
+        for chore_dict in chores_data:
+            chore_id = chores_by_name.get(chore_dict["name"])
+            if not chore_id:
+                continue
+
+            last_executor_ordinal = chore_dict.get("last_executor_ordinal")
+            next_executor_ordinal = chore_dict.get("next_executor_ordinal")
+            last_execution_date = chore_dict.get("last_execution_date")
+            next_execution_date = chore_dict.get("next_execution_date")
+
+            last_executor_id = ordinal_to_person_id.get(last_executor_ordinal) if last_executor_ordinal else None
+            next_executor_id = ordinal_to_person_id.get(next_executor_ordinal) if next_executor_ordinal else None
+
+            if not any([last_executor_id, next_executor_id, last_execution_date, next_execution_date]):
+                continue
+
+            chore_state = session.query(ChoreState).filter(ChoreState.chore_id == chore_id).first()
+            if not chore_state:
+                continue
+
+            before_values = {
+                "id": chore_state.id,
+                "chore_id": chore_state.chore_id,
+                "last_executor_id": chore_state.last_executor_id,
+                "last_execution_date": chore_state.last_execution_date,
+                "next_executor_id": chore_state.next_executor_id,
+                "next_execution_date": chore_state.next_execution_date,
+                "created_at": chore_state.created_at,
+                "updated_at": chore_state.updated_at,
+            }
+
+            chore_state.last_executor_id = last_executor_id
+            chore_state.last_execution_date = last_execution_date
+            chore_state.next_executor_id = next_executor_id
+            chore_state.next_execution_date = next_execution_date
+            chore_state.updated_at = now
+
+            after_values = {
+                "id": chore_state.id,
+                "chore_id": chore_state.chore_id,
+                "last_executor_id": chore_state.last_executor_id,
+                "last_execution_date": chore_state.last_execution_date,
+                "next_executor_id": chore_state.next_executor_id,
+                "next_execution_date": chore_state.next_execution_date,
+                "created_at": chore_state.created_at,
+                "updated_at": chore_state.updated_at,
+            }
+
+            audit_update(session, "chore_state", chore_state.id, before_values, after_values, "migration")
+            count += 1
+
+        session.commit()
+        print(f"Updated {count} chore states with data from sheet")
+        return count
+
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating chore states: {e}")
+        raise
+    finally:
+        session.close()
+
+
 def sync_chores_from_sheets(db: ChoresDatabase) -> None:
     """Sync all chore data from Google Sheets to database.
     
@@ -419,16 +525,21 @@ def sync_chores_from_sheets(db: ChoresDatabase) -> None:
         print("\nStep 3: Inserting chores from Google Sheets...")
         inserted_count, chores_by_name = insert_chores(db, chores_from_sheets)
         
-        # Step 4: Fetch people and parse rankings
-        print("\nStep 4: Parsing difficulty ratings and creating rankings...")
+        # Step 4: Fetch people from DB
+        print("\nStep 4: Fetching people and updating chore states...")
         people_by_name = get_people_from_database(db)
-        
+
+        # Step 4.5: Populate chore states from sheet columns
+        update_chore_states(db, chores_from_sheets, chores_by_name)
+
+        # Step 5: Parse and insert difficulty ratings
+        print("\nStep 5: Parsing difficulty ratings and creating rankings...")
         if people_by_name:
             rankings_data = parse_rankings_from_sheets(raw_records, chores_by_name, people_by_name)
             
             if rankings_data:
-                # Step 5: Insert rankings
-                print("\nStep 5: Inserting difficulty ratings into database...")
+                # Step 6: Insert rankings
+                print("\nStep 6: Inserting difficulty ratings into database...")
                 inserted_rankings = insert_rankings(db, rankings_data)
             else:
                 print("No difficulty ratings found in Google Sheets")

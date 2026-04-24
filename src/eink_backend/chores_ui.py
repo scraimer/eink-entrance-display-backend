@@ -109,9 +109,10 @@ def generate_chores_ui_html() -> str:
   .form-row { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; }
   .form-group { display: flex; flex-direction: column; gap: 0.25rem; }
   label { font-size: 0.8rem; color: #555; font-weight: 500; }
-  input[type="text"], input[type="number"] {
+  input[type="text"], input[type="number"], input[type="date"], select {
     padding: 0.4rem 0.6rem; border: 1px solid #cbd5e0;
     border-radius: 4px; font-size: 0.9rem; width: 100%;
+    background: #fff;
   }
   input[type="number"] { width: 5rem; }
   .inline-form { padding: 0.75rem 1rem; background: #f7fafc; border-top: 1px solid #e2e8f0; }
@@ -312,6 +313,7 @@ let people = [];      // [{id, name, ordinal, avatar, ...}]
 let allChores = [];   // from /chores list endpoint
 let summary = [];     // from /summary endpoint (chores + state + rankings)
 let peopleMap = {};   // id -> {name, ordinal}
+let choreStates = {}; // chore_id -> ChoreStateResponse
 
 const API = '/api/v1/chores';
 
@@ -405,18 +407,18 @@ async function loadChores() {
     summary = summaryRes.data?.chores || [];
     peopleMap = Object.fromEntries(people.map(p => [p.id, p]));
 
-    // Sort: primary by next_execution_date desc (null last), secondary by next executor ordinal desc
+    // Sort: primary by next_execution_date asc (null last), secondary by next executor ordinal asc
     summary.sort((a, b) => {
       const da = a.state?.next_execution_date;
       const db = b.state?.next_execution_date;
       if (da && db) {
-        if (da !== db) return da < db ? 1 : -1; // descending
+        if (da !== db) return da < db ? -1 : 1; // ascending
       } else if (da) return -1;
       else if (db) return 1;
-      // secondary: ordinal desc
-      const oa = peopleMap[a.state?.next_executor_id]?.ordinal ?? -1;
-      const ob = peopleMap[b.state?.next_executor_id]?.ordinal ?? -1;
-      return ob - oa;
+      // secondary: ordinal asc
+      const oa = peopleMap[a.state?.next_executor_id]?.ordinal ?? Infinity;
+      const ob = peopleMap[b.state?.next_executor_id]?.ordinal ?? Infinity;
+      return oa - ob;
     });
 
     if (summary.length === 0) {
@@ -522,6 +524,7 @@ function personRowHTML(p) {
       <td>${esc(p.avatar)}</td>
       <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="showEditPerson(${p.id})">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleRankings(${p.id})">Ratings</button>
         <button class="btn btn-danger btn-sm" onclick="deletePerson(${p.id}, '${esc(p.name)}')">Delete</button>
       </td>
     </tr>
@@ -685,8 +688,13 @@ async function loadMgmtChores() {
   const tbody = document.getElementById('mgmt-chores-tbody');
   tbody.innerHTML = '<tr><td colspan="3" class="empty">Loading…</td></tr>';
   try {
-    const res = await api('GET', '/chores');
-    allChores = (res.data || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    const [choreRes, summaryRes] = await Promise.all([
+      api('GET', '/chores'),
+      api('GET', '/summary'),
+    ]);
+    allChores = (choreRes.data || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    const summaryChores = summaryRes.data?.chores || [];
+    choreStates = Object.fromEntries(summaryChores.map(c => [c.id, c.state || {}]));
     if (allChores.length === 0) {
       tbody.innerHTML = '<tr><td colspan="3" class="empty">No chores yet.</td></tr>';
       return;
@@ -703,8 +711,9 @@ function choreRowHTML(c) {
     <tr id="chore-mgmt-row-${c.id}">
       <td>${esc(c.name)}</td>
       <td>${c.frequency_in_weeks}</td>
-      <td style="display:flex;gap:0.4rem">
+      <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="showEditChore(${c.id})">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="showEditSchedule(${c.id})">Schedule</button>
         <button class="btn btn-danger btn-sm" onclick="deleteChore(${c.id}, '${esc(c.name)}')">Delete</button>
       </td>
     </tr>
@@ -726,15 +735,78 @@ function choreRowHTML(c) {
         </div>
         <div id="edit-chore-error-${c.id}" class="error-banner"></div>
       </td>
+    </tr>
+    <tr id="chore-sched-edit-${c.id}" style="display:none">
+      <td colspan="3" class="inline-form">
+        <strong style="font-size:0.85rem;display:block;margin-bottom:0.5rem">Edit Next Execution</strong>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Next Due Date</label>
+            <input type="date" id="sched-date-${c.id}">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Next Executor</label>
+            <select id="sched-executor-${c.id}"></select>
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <button class="btn btn-success btn-sm" onclick="saveSchedule(${c.id})">Save</button>
+            <button class="btn btn-ghost btn-sm" onclick="hideEditSchedule(${c.id})" style="margin-top:0.25rem">Cancel</button>
+          </div>
+        </div>
+        <div id="sched-error-${c.id}" class="error-banner"></div>
+      </td>
     </tr>`;
 }
 
 function showEditChore(id) {
+  hideEditSchedule(id);
   document.getElementById('chore-mgmt-edit-' + id).style.display = '';
 }
 function hideEditChore(id) {
   document.getElementById('chore-mgmt-edit-' + id).style.display = 'none';
   clearError('edit-chore-error-' + id);
+}
+
+function showEditSchedule(choreId) {
+  hideEditChore(choreId);
+  const state = choreStates[choreId] || {};
+  // Pre-populate date
+  document.getElementById('sched-date-' + choreId).value = state.next_execution_date || '';
+  // Populate people dropdown
+  const sel = document.getElementById('sched-executor-' + choreId);
+  sel.innerHTML = '<option value="">\u2014 None \u2014</option>' +
+    people.map(p =>
+      `<option value="${p.id}" ${p.id === state.next_executor_id ? 'selected' : ''}>${esc(p.name)}</option>`
+    ).join('');
+  clearError('sched-error-' + choreId);
+  document.getElementById('chore-sched-edit-' + choreId).style.display = '';
+}
+function hideEditSchedule(id) {
+  const el = document.getElementById('chore-sched-edit-' + id);
+  if (el) el.style.display = 'none';
+  clearError('sched-error-' + id);
+}
+
+async function saveSchedule(choreId) {
+  clearError('sched-error-' + choreId);
+  const date = document.getElementById('sched-date-' + choreId).value;
+  const executorVal = document.getElementById('sched-executor-' + choreId).value;
+  const next_executor_id = executorVal ? parseInt(executorVal) : null;
+  if (!date && !next_executor_id) {
+    showError('sched-error-' + choreId, 'Please provide a date or select an executor.');
+    return;
+  }
+  try {
+    await api('PUT', '/executions/next-executor', {
+      chore_id: choreId,
+      next_executor_id: next_executor_id,
+      next_execution_date: date || null,
+    });
+    hideEditSchedule(choreId);
+    await loadMgmtChores();
+  } catch(e) {
+    showError('sched-error-' + choreId, e.message);
+  }
 }
 
 async function saveChore(id) {
