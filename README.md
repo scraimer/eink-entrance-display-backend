@@ -18,6 +18,36 @@ you can launch the daemon.
 
 Read the instruction in `chores.py` to see how to get the Application to have access.
 
+### Chores DB
+
+#### Periodically: Export a backup of the Chores Database
+
+```shell
+# change directory to the folder containing this README.md file
+sqlite3 chores.sqlite .dump > deploy/chores_dump.sql
+```
+
+##### To Restore it
+
+```shell
+sqlite3 chores_new.sqlite < deploy/chores_dump.sql
+```
+
+#### Initial: Sync the chore data from Google Sheets
+
+Run this inside the container:
+
+```shell
+cd /app
+python -c "
+from src.eink_backend.chores_db import ChoresDatabase
+from src.eink_backend.sync_chores_from_sheets import sync_chores_from_sheets
+db = ChoresDatabase('sqlite:///chores.sqlite')
+db.init_db()
+sync_chores_from_sheets(db)
+"
+```
+
 ## Developement Mode
 
 ### In the devcontainer
