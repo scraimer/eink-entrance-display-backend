@@ -9,13 +9,16 @@ from __future__ import print_function
 import datetime
 from dataclasses import dataclass
 from datetime import date
+import logging
 from string import Template
 import textwrap
 import traceback
 from typing import Any, Dict, List, Optional
-import requests
 
 from . import config, render
+
+
+_logger: logging.Logger = logging.getLogger()
 
 
 @dataclass
@@ -38,61 +41,56 @@ class Assignee:
     avatar: str
 
 
-def get_chores_from_database(db_url: str = "http://localhost:8000/api/v1/chores") -> List[Chore]:
-    """Fetch chores from the database API.
-    
-    Args:
-        db_url: Base URL of the chores API
-        
+def get_chores_from_database() -> List["Chore"]:
+    """Fetch chores directly from the database via build_chores_summary.
+
     Returns:
-        List of Chore objects from the database
+        List of Chore objects
     """
+    from . import main as _main  # deferred to avoid circular import at module load
+    from .chores_api import build_chores_summary
+
+    db = _main.chores_db
+    if db is None:
+        _logger.error("Chores database not initialized")
+        return []
+
+    summary = build_chores_summary(db)
+
+    # Build a person id→name lookup from the people table
+    people_by_id: Dict[int, str] = {}
+    session = db.get_session()
     try:
-        response = requests.get(f"{db_url}/summary", timeout=5)
-        response.raise_for_status()
-        
-        data = response.json()
-        if not data.get("success"):
-            print(f"API returned error: {data.get('error')}")
-            return []
-        
-        chores_list = []
-        summary = data.get("data", {})
-        
-        for chore_data in summary.get("chores", []):
-            # Convert database format to Chore format
-            state = chore_data.get("state", {})
-            next_execution_date = state.get("next_execution_date")
-            
-            # Parse the next execution date if available
-            due = date.today()
-            if next_execution_date:
-                try:
-                    due = date.fromisoformat(next_execution_date)
-                except (ValueError, TypeError):
-                    due = date.today()
-            
-            # Get the next executor's name from rankings or state
-            assignee = ""
-            next_executor_id = state.get("next_executor_id")
-            # For now, assignee is empty; could be enhanced with people lookup
-            
-            chore = Chore(
-                due=due,
-                name=chore_data.get("name", ""),
-                assignee=assignee,
-                frequency_in_weeks=chore_data.get("frequency_in_weeks", 1),
-            )
-            chores_list.append(chore)
-        
-        return chores_list
-        
-    except requests.exceptions.RequestException as ex:
-        print(f"Error connecting to chores API: {ex}")
-        return []
-    except Exception as ex:
-        print(f"Error parsing chores from database: {ex}")
-        return []
+        from .chores_db import Person as _Person
+        for person in session.query(_Person).all():
+            people_by_id[person.id] = person.name
+    finally:
+        session.close()
+
+    chores_list = []
+    for chore_data in summary.get("chores", []):
+        state = chore_data.get("state") or {}
+        next_execution_date = state.get("next_execution_date")
+
+        due = date.today()
+        if next_execution_date:
+            try:
+                due = date.fromisoformat(next_execution_date)
+            except (ValueError, TypeError):
+                due = date.today()
+
+        next_executor_id = state.get("next_executor_id")
+        assignee = people_by_id.get(next_executor_id, "") if next_executor_id else ""
+
+        chores_list.append(Chore(
+            due=due,
+            name=chore_data.get("name", ""),
+            assignee=assignee,
+            frequency_in_weeks=chore_data.get("frequency_in_weeks", 1),
+        ))
+        _logger.debug(f"Added record #{len(chores_list)}")
+
+    return chores_list
 
 
 EMPTY_CHORES = "-no chores data-"
@@ -111,10 +109,11 @@ def collect_data(now_utc: datetime) -> ChoreData:
     try:
         chores = get_chores_from_database()
     except Exception as ex:
-        print(f"Exception {ex} in get_chores_from_database")
-        traceback.print_exc()
+        _logger.error(f"Exception {ex} in get_chores_from_database")
+        _logger.error(traceback.format_exc())
         return ChoreData(chores=[], error=API_ERROR)
     if not chores:
+        _logger.error("No chores found")
         return ChoreData(chores=[], error=EMPTY_CHORES)
     return ChoreData(chores=chores)
 

@@ -198,6 +198,53 @@ class ChoresSummaryResponse(BaseModel):
 # ============================================================================
 
 
+def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
+    """Get all chores with current state and rankings, queried directly from the database.
+
+    Args:
+        db: ChoresDatabase instance to query
+
+    Returns:
+        Dict with a "chores" key containing a list of chore dicts with state and rankings.
+    """
+    session = db.get_session()
+    try:
+        chores = (
+            session.query(Chore)
+            .options(
+                joinedload(Chore.state),
+                subqueryload(Chore.rankings),
+            )
+            .all()
+        )
+
+        chores_data = []
+        for chore in chores:
+            state = chore.state
+            chores_data.append({
+                "id": chore.id,
+                "name": chore.name,
+                "frequency_in_weeks": chore.frequency_in_weeks,
+                "state": {
+                    "id": state.id,
+                    "chore_id": state.chore_id,
+                    "last_executor_id": state.last_executor_id,
+                    "last_execution_date": state.last_execution_date,
+                    "next_executor_id": state.next_executor_id,
+                    "next_execution_date": state.next_execution_date,
+                    "created_at": state.created_at,
+                    "updated_at": state.updated_at,
+                } if state else None,
+                "rankings": [
+                    {"person_id": r.person_id, "rating": r.rating}
+                    for r in chore.rankings
+                ],
+            })
+        return {"chores": chores_data}
+    finally:
+        session.close()
+
+
 def create_chores_router(db: ChoresDatabase) -> APIRouter:
     """Create and configure the chores API router.
 
@@ -1190,53 +1237,11 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
 
     @router.get("/summary", response_model=APIResponse)
     def get_chores_summary():
-        """Get all chores with current state and rankings."""
-        session = db.get_session()
-        try:
-            chores = (
-                session.query(Chore)
-                .options(
-                    joinedload(Chore.state),
-                    subqueryload(Chore.rankings),
-                )
-                .all()
-            )
-
-            if len(chores) > 1000:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Result set exceeds maximum limit of 1000 records. "
-                    "Use filters to narrow your query.",
-                )
-
-            chores_data = []
-            for chore in chores:
-                state = chore.state
-
-                chore_with_state = {
-                    "id": chore.id,
-                    "name": chore.name,
-                    "frequency_in_weeks": chore.frequency_in_weeks,
-                    "state": {
-                        "id": state.id,
-                        "chore_id": state.chore_id,
-                        "last_executor_id": state.last_executor_id,
-                        "last_execution_date": state.last_execution_date,
-                        "next_executor_id": state.next_executor_id,
-                        "next_execution_date": state.next_execution_date,
-                        "created_at": state.created_at,
-                        "updated_at": state.updated_at,
-                    } if state else None,
-                    "rankings": [
-                        {"person_id": r.person_id, "rating": r.rating}
-                        for r in chore.rankings
-                    ],
-                }
-                chores_data.append(chore_with_state)
-
-            return APIResponse(success=True, data={"chores": chores_data})
-        finally:
-            session.close()
+        chores_data = build_chores_summary(db)
+        if chores_data["chores"]:
+            return APIResponse(success=True, data=chores_data)
+        else:
+            return APIResponse(success=False)
 
     # ========================================================================
     # Audit Endpoints
