@@ -71,6 +71,7 @@ class ChoreRequest(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     frequency_in_weeks: int = Field(..., ge=1)
+    same_person_next_time: bool = False
 
 
 class ChoreResponse(BaseModel):
@@ -79,6 +80,7 @@ class ChoreResponse(BaseModel):
     id: int
     name: str
     frequency_in_weeks: int
+    same_person_next_time: bool
     created_at: str
     updated_at: str
 
@@ -225,6 +227,7 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
                 "id": chore.id,
                 "name": chore.name,
                 "frequency_in_weeks": chore.frequency_in_weeks,
+                "same_person_next_time": chore.same_person_next_time,
                 "state": {
                     "id": state.id,
                     "chore_id": state.chore_id,
@@ -235,10 +238,11 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,
                 } if state else None,
-                "rankings": [
-                    {"person_id": r.person_id, "rating": r.rating}
-                    for r in chore.rankings
-                ],
+                "rankings": (
+                    []
+                    if chore.same_person_next_time
+                    else [{"person_id": r.person_id, "rating": r.rating} for r in chore.rankings]
+                ),
             })
         return {"chores": chores_data}
     finally:
@@ -558,6 +562,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             chore = Chore(
                 name=request.name,
                 frequency_in_weeks=request.frequency_in_weeks,
+                same_person_next_time=request.same_person_next_time,
                 created_at=now,
                 updated_at=now,
             )
@@ -582,6 +587,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "id": chore.id,
                     "name": chore.name,
                     "frequency_in_weeks": chore.frequency_in_weeks,
+                    "same_person_next_time": chore.same_person_next_time,
                     "created_at": chore.created_at,
                     "updated_at": chore.updated_at,
                 },
@@ -611,6 +617,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     id=chore.id,
                     name=chore.name,
                     frequency_in_weeks=chore.frequency_in_weeks,
+                    same_person_next_time=chore.same_person_next_time,
                     created_at=chore.created_at,
                     updated_at=chore.updated_at,
                 ),
@@ -639,6 +646,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     id=chore.id,
                     name=chore.name,
                     frequency_in_weeks=chore.frequency_in_weeks,
+                    same_person_next_time=chore.same_person_next_time,
                     created_at=chore.created_at,
                     updated_at=chore.updated_at,
                 ),
@@ -667,6 +675,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                         id=c.id,
                         name=c.name,
                         frequency_in_weeks=c.frequency_in_weeks,
+                        same_person_next_time=c.same_person_next_time,
                         created_at=c.created_at,
                         updated_at=c.updated_at,
                     )
@@ -696,6 +705,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "id": chore.id,
                 "name": chore.name,
                 "frequency_in_weeks": chore.frequency_in_weeks,
+                "same_person_next_time": chore.same_person_next_time,
                 "created_at": chore.created_at,
                 "updated_at": chore.updated_at,
             }
@@ -703,6 +713,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             # Update
             chore.name = request.name
             chore.frequency_in_weeks = request.frequency_in_weeks
+            chore.same_person_next_time = request.same_person_next_time
             chore.updated_at = utc_now_iso()
 
             # Capture after values
@@ -710,6 +721,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "id": chore.id,
                 "name": chore.name,
                 "frequency_in_weeks": chore.frequency_in_weeks,
+                "same_person_next_time": chore.same_person_next_time,
                 "created_at": chore.created_at,
                 "updated_at": chore.updated_at,
             }
@@ -724,6 +736,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     id=chore.id,
                     name=chore.name,
                     frequency_in_weeks=chore.frequency_in_weeks,
+                    same_person_next_time=chore.same_person_next_time,
                     created_at=chore.created_at,
                     updated_at=chore.updated_at,
                 ),
@@ -810,19 +823,23 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             session.add(execution)
             session.flush()
 
-            # Calculate next executor using round-robin
+            # Calculate next executor using round-robin, unless chore pins the same person
             all_people = session.query(Person).order_by(Person.ordinal).all()
             if not all_people:
                 raise HTTPException(status_code=400, detail="No people available for scheduling")
 
-            # Find next executor
-            current_index = 0
-            if request.executor_id in [p.id for p in all_people]:
-                current_index = next(
-                    i for i, p in enumerate(all_people) if p.id == request.executor_id
-                )
-            next_index = (current_index + 1) % len(all_people)
-            next_executor_id = all_people[next_index].id
+            if chore.same_person_next_time:
+                # Keep the same executor — do not rotate
+                next_executor_id = request.executor_id
+            else:
+                # Find next executor in round-robin
+                current_index = 0
+                if request.executor_id in [p.id for p in all_people]:
+                    current_index = next(
+                        i for i, p in enumerate(all_people) if p.id == request.executor_id
+                    )
+                next_index = (current_index + 1) % len(all_people)
+                next_executor_id = all_people[next_index].id
 
             # Calculate next execution date
             execution_date = datetime.strptime(today, "%Y-%m-%d").date()
@@ -1161,10 +1178,12 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
         person_id: Optional[int] = None,
         chore_id: Optional[int] = None,
     ):
-        """List rankings with optional filtering."""
+        """List rankings with optional filtering. Excludes chores flagged same_person_next_time."""
         session = db.get_session()
         try:
-            query = session.query(Ranking)
+            query = session.query(Ranking).join(Chore, Ranking.chore_id == Chore.id).filter(
+                Chore.same_person_next_time == False  # noqa: E712
+            )
 
             if person_id:
                 query = query.filter(Ranking.person_id == person_id)

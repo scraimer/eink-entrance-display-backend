@@ -114,6 +114,37 @@ def full_init():
         return 1
 
 
+def add_same_person_next_time_column():
+    """Migration: add same_person_next_time column to chores table."""
+    logger.info("Running migration: add same_person_next_time to chores...")
+    try:
+        db = setup_database()
+        with db.engine.connect() as conn:
+            # Check if column already exists
+            result = conn.execute(
+                __import__("sqlalchemy").text("PRAGMA table_info(chores)")
+            )
+            columns = [row[1] for row in result]
+            if "same_person_next_time" in columns:
+                logger.info("Column same_person_next_time already exists — skipping.")
+                db.close()
+                return 0
+
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE chores ADD COLUMN same_person_next_time INTEGER NOT NULL DEFAULT 0"
+                    " CHECK (same_person_next_time IN (0, 1))"
+                )
+            )
+            conn.commit()
+        db.close()
+        logger.info("✓ Migration completed: same_person_next_time added to chores")
+        return 0
+    except Exception as e:
+        logger.error(f"✗ Migration failed: {e}", exc_info=True)
+        return 1
+
+
 def main():
     """Parse arguments and execute the appropriate command."""
     parser = argparse.ArgumentParser(
@@ -130,7 +161,7 @@ Examples:
     
     parser.add_argument(
         "command",
-        choices=["sync-sheets", "clear-chores", "init-db", "people-init"],
+        choices=["sync-sheets", "clear-chores", "init-db", "people-init", "migrate-same-person"],
         help="Command to execute",
     )
     
@@ -141,6 +172,7 @@ Examples:
         "clear-chores": clear_chores,
         "init-db": full_init,
         "people-init": init_people,
+        "migrate-same-person": add_same_person_next_time_column,
     }
     
     try:

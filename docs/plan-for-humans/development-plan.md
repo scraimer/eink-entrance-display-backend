@@ -11,9 +11,6 @@
 ## Bugs
 
 * The weather always show the current-time weather, even when "at=" is specified.
-* Some chores should not switch from one person to the next.
-  * Candles / Wash Floors / etc - always stay with the same person.
-  * Those same chores should also not be listed in the rankings
 * The next person to do chores should only cycle between the four oldest, skipping Aviv for now.
 * It's not clear which number is for which ranking. Either add vertical lines to divide the columns,
   or add borders around the pair of "name" and "value" to visually show they are related, and separate

@@ -84,6 +84,7 @@ def generate_chores_ui_html() -> str:
   .badge-yellow { background: #fefcbf; color: #744210; }
   .badge-red { background: #fed7d7; color: #9b2c2c; }
   .badge-grey { background: #e2e8f0; color: #4a5568; }
+  .badge-purple { background: #e9d8fd; color: #553c9a; }
 
   /* ---------- buttons ---------- */
   .btn {
@@ -268,6 +269,11 @@ def generate_chores_ui_html() -> str:
               <label>Frequency (weeks)</label>
               <input type="number" id="new-chore-freq" min="1" placeholder="1">
             </div>
+            <div class="form-group" style="justify-content:center;align-self:flex-end;padding-bottom:0.35rem">
+              <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+                <input type="checkbox" id="new-chore-same-person"> Same person next time
+              </label>
+            </div>
             <div class="form-group" style="justify-content:flex-end">
               <button class="btn btn-success" onclick="addChore()">Save</button>
               <button class="btn btn-ghost" onclick="hideAddChoreForm()" style="margin-top:0.25rem">Cancel</button>
@@ -430,9 +436,12 @@ async function loadChores() {
       const state = chore.state || {};
       const nextPerson = peopleMap[state.next_executor_id];
       const nextName = nextPerson ? nextPerson.name : '—';
+      const samePersonBadge = chore.same_person_next_time
+        ? ' <span class="badge badge-purple" title="Same person next time">📌 Always same</span>'
+        : '';
       return `
         <tr id="chore-row-${i}" onclick="toggleChoreDetail(${i})" data-idx="${i}">
-          <td><strong>${esc(chore.name)}</strong></td>
+          <td><strong>${esc(chore.name)}</strong>${samePersonBadge}</td>
           <td>${fmtDate(state.next_execution_date)} ${dueBadge(state.next_execution_date)}</td>
           <td>${esc(nextName)}</td>
           <td>${state.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>'}</td>
@@ -614,11 +623,12 @@ async function loadRankingsForPerson(personId) {
     ]);
     allChores = choreRes.data || [];
     const ratings = Object.fromEntries((rankRes.data || []).map(r => [r.chore_id, r.rating]));
-    if (allChores.length === 0) {
+    const rankableChores = allChores.filter(c => !c.same_person_next_time);
+    if (rankableChores.length === 0) {
       grid.innerHTML = '<em>No chores to rank.</em>';
       return;
     }
-    grid.innerHTML = allChores.map(c => `
+    grid.innerHTML = rankableChores.map(c => `
       <div class="ranking-item">
         <label for="rank-${personId}-${c.id}">${esc(c.name)}</label>
         <input type="number" id="rank-${personId}-${c.id}"
@@ -634,7 +644,7 @@ async function loadRankingsForPerson(personId) {
 async function saveRankings(personId) {
   clearError('rankings-error-' + personId);
   const errors = [];
-  for (const chore of allChores) {
+  for (const chore of allChores.filter(c => !c.same_person_next_time)) {
     const input = document.getElementById(`rank-${personId}-${chore.id}`);
     if (!input) continue;
     const val = input.value.trim();
@@ -709,7 +719,7 @@ async function loadMgmtChores() {
 function choreRowHTML(c) {
   return `
     <tr id="chore-mgmt-row-${c.id}">
-      <td>${esc(c.name)}</td>
+      <td>${esc(c.name)}${c.same_person_next_time ? ' <span class="badge badge-purple">📌 Same person</span>' : ''}</td>
       <td>${c.frequency_in_weeks}</td>
       <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="showEditChore(${c.id})">Edit</button>
@@ -727,6 +737,11 @@ function choreRowHTML(c) {
           <div class="form-group">
             <label>Frequency (weeks)</label>
             <input type="number" id="edit-chore-freq-${c.id}" min="1" value="${c.frequency_in_weeks}">
+          </div>
+          <div class="form-group" style="justify-content:center;align-self:flex-end;padding-bottom:0.35rem">
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+              <input type="checkbox" id="edit-chore-same-person-${c.id}" ${c.same_person_next_time ? 'checked' : ''}> Same person next time
+            </label>
           </div>
           <div class="form-group" style="justify-content:flex-end">
             <button class="btn btn-success btn-sm" onclick="saveChore(${c.id})">Save</button>
@@ -813,12 +828,13 @@ async function saveChore(id) {
   clearError('edit-chore-error-' + id);
   const name = document.getElementById('edit-chore-name-' + id).value.trim();
   const freq = parseInt(document.getElementById('edit-chore-freq-' + id).value);
+  const samePersonNextTime = document.getElementById('edit-chore-same-person-' + id).checked;
   if (!name || isNaN(freq) || freq < 1) {
     showError('edit-chore-error-' + id, 'Name is required and frequency must be ≥ 1.');
     return;
   }
   try {
-    await api('PUT', '/chores/' + id, { name, frequency_in_weeks: freq });
+    await api('PUT', '/chores/' + id, { name, frequency_in_weeks: freq, same_person_next_time: samePersonNextTime });
     await loadMgmtChores();
   } catch(e) {
     showError('edit-chore-error-' + id, e.message);
@@ -848,14 +864,16 @@ async function addChore() {
   clearError('add-chore-error');
   const name = document.getElementById('new-chore-name').value.trim();
   const freq = parseInt(document.getElementById('new-chore-freq').value);
+  const samePersonNextTime = document.getElementById('new-chore-same-person').checked;
   if (!name || isNaN(freq) || freq < 1) {
     showError('add-chore-error', 'Name is required and frequency must be ≥ 1.');
     return;
   }
   try {
-    await api('POST', '/chores', { name, frequency_in_weeks: freq });
+    await api('POST', '/chores', { name, frequency_in_weeks: freq, same_person_next_time: samePersonNextTime });
     document.getElementById('new-chore-name').value = '';
     document.getElementById('new-chore-freq').value = '';
+    document.getElementById('new-chore-same-person').checked = false;
     hideAddChoreForm();
     await loadMgmtChores();
   } catch(e) {

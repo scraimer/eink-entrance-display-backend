@@ -4,7 +4,7 @@ This checklist covers deploying the chores SQLite backend to production.
 
 ## Pre-Deployment
 
-- [ ] **Backup Google Sheets data**
+- [] **Backup Google Sheets data**
   - Export the "Friday Chores" worksheet to CSV or make a copy of the spreadsheet
   - Note the current frequency values for all chores
 

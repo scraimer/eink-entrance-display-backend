@@ -15,6 +15,7 @@ from pathlib import Path
 from dataclasses import dataclass, asdict
 from sqlalchemy import (
     create_engine,
+    Boolean,
     Column,
     Integer,
     String,
@@ -66,6 +67,7 @@ class Chore(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     frequency_in_weeks = Column(Integer, nullable=False)
+    same_person_next_time = Column(Boolean, nullable=False, default=False)
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
 
@@ -225,6 +227,7 @@ class ChoreData:
     id: Optional[int] = None
     name: str = ""
     frequency_in_weeks: int = 1
+    same_person_next_time: bool = False
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
