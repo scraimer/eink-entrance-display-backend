@@ -8,7 +8,24 @@
 * Verify that PNG is the right size; force it to the right size by cutting it
   down to size.
 
+## Bugs
+
+* The weather always show the current-time weather, even when "at=" is specified.
+* Some chores should not switch from one person to the next.
+  * Candles / Wash Floors / etc - always stay with the same person.
+  * Those same chores should also not be listed in the rankings
+* The next person to do chores should only cycle between the four oldest, skipping Aviv for now.
+* It's not clear which number is for which ranking. Either add vertical lines to divide the columns,
+  or add borders around the pair of "name" and "value" to visually show they are related, and separate
+  from the other pairs.
+* Add a warning to the developer if there's a file longer than 400 lines
+  * Split files that are longer than 400 lines so that the Agent doesn't have to read so much.
+
 ## Wishlist / Ideas
+
+* `sync_chores_from_sheets.py` can be deprecated. Its usefulness is at an end. Remove the file from the project and any mentions in the README.md
+
+* Move more stuff to the DB and UI, such as the seating chart.
 
 ### Weather
 
