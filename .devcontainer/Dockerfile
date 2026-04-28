@@ -36,10 +36,11 @@ RUN mkdir -p /tmp/node && \
         wget "https://nodejs.org/dist/${VERSION}/node-${VERSION}-linux-${NODE_ARCH}.tar.xz" && \
         tar -C /usr/local -xJf "node-${VERSION}-linux-${NODE_ARCH}.tar.xz" && \
         ln -fs /usr/local/node-${VERSION}-linux-${NODE_ARCH}/bin/node /usr/local/bin/node && \
-        ln -fs /usr/local/node-${VERSION}-linux-${NODE_ARCH}/bin/npm /usr/local/bin/npm
+        ln -fs /usr/local/node-${VERSION}-linux-${NODE_ARCH}/bin/npm /usr/local/bin/npm && \
+        ln -fs /usr/local/node-${VERSION}-linux-${NODE_ARCH}/bin /usr/local/node-bin-dir
 ENV PATH="${PATH}:/usr/local/bin"
 
 # Install openspec CLI
 RUN npm install -g @fission-ai/openspec@latest && \
-    ln -s /usr/local/node-${VERSION}-linux-${NODE_ARCH}/bin/openspec /usr/local/bin/openspec
+    ln -s /usr/local/node-bin-dir/openspec /usr/local/bin/openspec
 
