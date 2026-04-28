@@ -1,6 +1,7 @@
 import sys
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime
+import logging
 from string import Template
 from typing import Dict, List, Optional, Union
 
@@ -8,7 +9,9 @@ from pyowm.owm import OWM
 import requests
 
 from . import render
-from .config import config
+from .config import config, LOCAL_TZ
+
+_logger: logging.Logger = logging.getLogger()
 
 WMO_IMAGE_CROP_AREA = (10, 10, 90, 90)
 """There's a lot of empty white space in the images, crop just the middle 80x80"""
@@ -358,6 +361,7 @@ def _collect_data_impl(now_utc: datetime) -> WeatherForecast:
     # Setup: The API key you got from the open-meteo.com website, save it
     #        as `SECRETS_OPEN_METEO_API_KEY` in the file `.secrets`
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
+    # timezone=auto returns the times in local time (Israel)
     request_url = (
         f"{BASE_URL}?latitude={config.efrat.lat}&longitude={config.efrat.lon}"
         f"&current=temperature_2m,precipitation,rain,weather_code,wind_speed_10m,wind_direction_10m,uv_index,apparent_temperature"
@@ -414,7 +418,7 @@ def _collect_data_impl(now_utc: datetime) -> WeatherForecast:
     return WeatherForecast(current=current, hourlies=hourlies, tomorrow=tomorrow)
 
 
-def weather_report(weather_forecast: WeatherForecast, color: str):
+def weather_report(weather_forecast: WeatherForecast, color: str, now_utc: datetime):
     # When looking at the board, I want it to warn me what to prepare for:
     # - rising temperature
     # - rain (take coat!) or snow (don't go!)
@@ -430,31 +434,37 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
     # - the next hourly that is at least 45 minutes away
     # - the next 2 hourlies that are either 7:00, 14:00, 16:00
     # - the forecast for the whole of tomorrow
-
-    now = datetime.now()
-    next_hourly_key = datetime(
-        year=now.year, month=now.month, day=now.day, hour=now.hour
+    now = now_utc.astimezone(LOCAL_TZ).replace(tzinfo=None)
+    current_hour_key = datetime(
+        year=now.year, month=now.month, day=now.day, hour=now.hour, tzinfo=now.tzinfo
     )
     next_hourly_matches = [
         hourly
         for hourly in weather_forecast.hourlies
-        if hourly.timestamp == next_hourly_key
+        if hourly.timestamp == current_hour_key
     ]
+    _logger.debug(f"Found matching hourlies: {[h.timestamp for h in next_hourly_matches]}")
     assert (
         len(next_hourly_matches) == 1
     ), f"Expected 1 match, found {len(next_hourly_matches)}"
-    next_hourly = next_hourly_matches[0]
+    next_hourly = None
+    if len(next_hourly_matches) > 0:
+        next_hourly = next_hourly_matches[0]
 
     DESIRED_HOURS = [7, 14, 16]  # 07:00, 14:00, 16:00
     matching_hourlies = []
     # skip the next 2 hours, they are too near
     for hourly in weather_forecast.hourlies[2:]:
+        # We already have the current hour, and we ignore anything older
+        if hourly.timestamp <= current_hour_key:
+            continue
         if hourly.timestamp.hour in DESIRED_HOURS:
             matching_hourlies.append(hourly)
         if len(matching_hourlies) >= 2:
             break
 
-    hourlies_to_display = [next_hourly] + matching_hourlies
+    hourlies_to_display = ([next_hourly] if next_hourly else []) + matching_hourlies
+    _logger.debug(f"Hourlies to display: {[h.timestamp for h in hourlies_to_display]}")
 
     hours_template = Template(
         """<li>
@@ -470,8 +480,8 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
     hours_str = ""
     for hourly in hourlies_to_display:
         hour_modified = hourly.timestamp.strftime("%H:%M") + (
-            f'<span class="tomorrow">{hourly.timestamp.strftime("%A")}</span>'
-            if hourly.timestamp.day != datetime.today().day
+            f'<span class="tomorrow"> {hourly.timestamp.strftime("%a")}</span>'
+            if hourly.timestamp.day != now.day
             else ""
         )
 
@@ -565,10 +575,11 @@ def weather_report(weather_forecast: WeatherForecast, color: str):
 
 
 if __name__ == "__main__":
-    forecast = collect_data(now_utc=datetime.now())
+    now_utc = datetime.now()
+    forecast = collect_data(now_utc=now_utc)
     if forecast is None:
         sys.exit(1)
     # print(forecast)
-    report = weather_report(weather_forecast=forecast, color="joined")
+    report = weather_report(weather_forecast=forecast, color="joined", now_utc=now_utc)
     # print(report)
     sys.exit(0)

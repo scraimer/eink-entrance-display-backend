@@ -418,12 +418,13 @@ def collect_all_values_of_data(
     try:
         # print(f"Collecting weather report with forecast: {weather_forecast}")
         weather_report = weather.weather_report(
-            weather_forecast=weather_forecast, color=color
+            weather_forecast=weather_forecast, color=color, now_utc=now_utc
         )
         if weather_report:
             weather_dict["weather_report"] = weather_report
     except Exception as ex:
         msg = f"Exception colecting error report: {ex}"
+        _logger.error(msg + f"\n{traceback.format_exc()}")
         weather_dict["weather_report"] = msg
         print(msg)
 
