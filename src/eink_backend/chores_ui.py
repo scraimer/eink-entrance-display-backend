@@ -460,6 +460,9 @@ function choreDetailHTML(chore, state) {
   const lastPerson = peopleMap[state.last_executor_id];
   const nextPerson = peopleMap[state.next_executor_id];
   const canMarkDone = !!state.next_executor_id;
+  const personOptions = people.map(p =>
+    `<option value="${p.id}">${esc(p.name)}</option>`
+  ).join('');
   return `
     <dl class="detail-grid">
       <dt>Last Executor</dt><dd>${lastPerson ? esc(lastPerson.name) : '—'}</dd>
@@ -469,11 +472,30 @@ function choreDetailHTML(chore, state) {
       <dt>Frequency</dt><dd>Every ${chore.frequency_in_weeks} week${chore.frequency_in_weeks !== 1 ? 's' : ''}</dd>
     </dl>
     <div id="done-error-${chore.id}" class="error-banner"></div>
-    <button class="btn btn-success btn-sm"
-      ${canMarkDone ? '' : 'disabled title="No next executor scheduled"'}
-      onclick="markDone(${chore.id}, ${state.next_executor_id})">
-      ✓ Mark as Done
-    </button>`;
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+      <button class="btn btn-success btn-sm"
+        ${canMarkDone ? '' : 'disabled title="No next executor scheduled"'}
+        onclick="markDone(${chore.id}, ${state.next_executor_id})">
+        ✓ Mark as Done
+      </button>
+      ${canMarkDone ? `<a href="#" id="done-by-other-link-${chore.id}"
+        style="font-size:0.8rem;color:#718096"
+        onclick="event.preventDefault();showDoneByOther(${chore.id})">Done by someone else?</a>` : ''}
+    </div>
+    ${canMarkDone ? `
+    <div id="done-by-other-panel-${chore.id}" style="display:none;margin-top:0.6rem;padding:0.6rem 0.75rem;background:#f7fafc;border:1px solid #e2e8f0;border-radius:4px">
+      <div class="form-row" style="align-items:center;gap:0.5rem">
+        <select id="done-by-other-select-${chore.id}"
+          onchange="document.getElementById('done-by-other-confirm-${chore.id}').disabled = !this.value">
+          <option value="">— Select person —</option>
+          ${personOptions}
+        </select>
+        <button id="done-by-other-confirm-${chore.id}" class="btn btn-success btn-sm" disabled
+          onclick="confirmDoneByOther(${chore.id})">Confirm</button>
+        <a href="#" style="font-size:0.8rem;color:#718096"
+          onclick="event.preventDefault();hideDoneByOther(${chore.id})">Cancel</a>
+      </div>
+    </div>` : ''}`;
 }
 
 function toggleChoreDetail(i) {
@@ -485,6 +507,31 @@ function toggleChoreDetail(i) {
 }
 
 async function markDone(choreId, executorId) {
+  clearError('done-error-' + choreId);
+  try {
+    await api('POST', '/executions', { chore_id: choreId, executor_id: executorId });
+    await loadChores();
+  } catch(e) {
+    showError('done-error-' + choreId, e.message);
+  }
+}
+
+function showDoneByOther(choreId) {
+  document.getElementById('done-by-other-link-' + choreId).style.display = 'none';
+  document.getElementById('done-by-other-panel-' + choreId).style.display = '';
+}
+
+function hideDoneByOther(choreId) {
+  document.getElementById('done-by-other-panel-' + choreId).style.display = 'none';
+  document.getElementById('done-by-other-link-' + choreId).style.display = '';
+  document.getElementById('done-by-other-select-' + choreId).value = '';
+  document.getElementById('done-by-other-confirm-' + choreId).disabled = true;
+}
+
+async function confirmDoneByOther(choreId) {
+  const select = document.getElementById('done-by-other-select-' + choreId);
+  const executorId = parseInt(select.value);
+  if (!executorId) return;
   clearError('done-error-' + choreId);
   try {
     await api('POST', '/executions', { chore_id: choreId, executor_id: executorId });
