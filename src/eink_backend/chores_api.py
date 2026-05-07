@@ -53,6 +53,7 @@ class PersonRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     ordinal: int = Field(..., ge=1)
     avatar: str = Field(..., min_length=1, max_length=255)
+    in_rotation: bool = True
 
 
 class PersonResponse(BaseModel):
@@ -62,6 +63,7 @@ class PersonResponse(BaseModel):
     name: str
     ordinal: int
     avatar: str
+    in_rotation: bool
     created_at: str
     updated_at: str
 
@@ -279,6 +281,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 name=request.name,
                 ordinal=request.ordinal,
                 avatar=request.avatar,
+                in_rotation=request.in_rotation,
                 created_at=now,
                 updated_at=now,
             )
@@ -295,6 +298,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "name": person.name,
                     "ordinal": person.ordinal,
                     "avatar": person.avatar,
+                    "in_rotation": person.in_rotation,
                     "created_at": person.created_at,
                     "updated_at": person.updated_at,
                 },
@@ -309,6 +313,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     name=person.name,
                     ordinal=person.ordinal,
                     avatar=person.avatar,
+                    in_rotation=person.in_rotation,
                     created_at=person.created_at,
                     updated_at=person.updated_at,
                 ),
@@ -338,6 +343,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     name=person.name,
                     ordinal=person.ordinal,
                     avatar=person.avatar,
+                    in_rotation=person.in_rotation,
                     created_at=person.created_at,
                     updated_at=person.updated_at,
                 ),
@@ -367,6 +373,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                         name=p.name,
                         ordinal=p.ordinal,
                         avatar=p.avatar,
+                        in_rotation=p.in_rotation,
                         created_at=p.created_at,
                         updated_at=p.updated_at,
                     )
@@ -397,6 +404,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "name": person.name,
                 "ordinal": person.ordinal,
                 "avatar": person.avatar,
+                "in_rotation": person.in_rotation,
                 "created_at": person.created_at,
                 "updated_at": person.updated_at,
             }
@@ -405,6 +413,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             person.name = request.name
             person.ordinal = request.ordinal
             person.avatar = request.avatar
+            person.in_rotation = request.in_rotation
             person.updated_at = utc_now_iso()
 
             # Capture after values
@@ -413,6 +422,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "name": person.name,
                 "ordinal": person.ordinal,
                 "avatar": person.avatar,
+                "in_rotation": person.in_rotation,
                 "created_at": person.created_at,
                 "updated_at": person.updated_at,
             }
@@ -428,6 +438,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     name=person.name,
                     ordinal=person.ordinal,
                     avatar=person.avatar,
+                    in_rotation=person.in_rotation,
                     created_at=person.created_at,
                     updated_at=person.updated_at,
                 ),
@@ -456,6 +467,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "name": person.name,
                 "ordinal": person.ordinal,
                 "avatar": person.avatar,
+                "in_rotation": person.in_rotation,
                 "created_at": person.created_at,
                 "updated_at": person.updated_at,
             }
@@ -823,23 +835,28 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             session.add(execution)
             session.flush()
 
-            # Calculate next executor using round-robin, unless chore pins the same person
-            all_people = session.query(Person).order_by(Person.ordinal).all()
-            if not all_people:
-                raise HTTPException(status_code=400, detail="No people available for scheduling")
+            # Build rotation pool: only in_rotation=True people, ordered by ordinal
+            rotation_pool = (
+                session.query(Person)
+                .filter(Person.in_rotation == True)  # noqa: E712
+                .order_by(Person.ordinal)
+                .all()
+            )
+            if not rotation_pool:
+                raise HTTPException(status_code=400, detail="No people in the rotation pool")
 
             if chore.same_person_next_time:
                 # Keep the same executor — do not rotate
                 next_executor_id = request.executor_id
             else:
-                # Find next executor in round-robin
-                current_index = 0
-                if request.executor_id in [p.id for p in all_people]:
-                    current_index = next(
-                        i for i, p in enumerate(all_people) if p.id == request.executor_id
-                    )
-                next_index = (current_index + 1) % len(all_people)
-                next_executor_id = all_people[next_index].id
+                # Find next executor in round-robin within the rotation pool
+                pool_ids = [p.id for p in rotation_pool]
+                if request.executor_id in pool_ids:
+                    current_index = pool_ids.index(request.executor_id)
+                else:
+                    current_index = -1
+                next_index = (current_index + 1) % len(rotation_pool)
+                next_executor_id = rotation_pool[next_index].id
 
             # Calculate next execution date
             execution_date = datetime.strptime(today, "%Y-%m-%d").date()

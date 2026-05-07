@@ -45,6 +45,7 @@ class Person(Base):
     name = Column(String, nullable=False, unique=True)
     ordinal = Column(Integer, nullable=False)
     avatar = Column(String, nullable=False)
+    in_rotation = Column(Boolean, nullable=False, default=True)
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
 
@@ -194,6 +195,26 @@ class ChoresDatabase:
         """Create all tables in the database."""
         Base.metadata.create_all(bind=self.engine)
 
+    def migrate_db(self):
+        """Apply additive schema migrations for existing databases.
+
+        Safe to call on every startup — each migration is idempotent.
+        """
+        if "sqlite" not in self.database_url:
+            return
+        db_path = self.database_url.replace("sqlite:///", "")
+        import sqlite3 as _sqlite3
+        con = _sqlite3.connect(db_path)
+        try:
+            existing_cols = {row[1] for row in con.execute("PRAGMA table_info(people)")}
+            if "in_rotation" not in existing_cols:
+                con.execute(
+                    "ALTER TABLE people ADD COLUMN in_rotation INTEGER NOT NULL DEFAULT 1"
+                )
+                con.commit()
+        finally:
+            con.close()
+
     def get_session(self) -> Session:
         """Get a new database session."""
         return self.SessionLocal()
@@ -216,6 +237,7 @@ class PersonData:
     name: str = ""
     ordinal: int = 0
     avatar: str = ""
+    in_rotation: bool = True
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

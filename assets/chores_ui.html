@@ -203,10 +203,10 @@
         <div id="people-error" class="error-banner"></div>
         <table>
           <thead>
-            <tr><th>Name</th><th>Ordinal</th><th>Avatar</th><th></th></tr>
+            <tr><th>Name</th><th>Ordinal</th><th>Avatar</th><th>In rotation</th><th></th></tr>
           </thead>
           <tbody id="people-tbody">
-            <tr><td colspan="4" class="empty">Loading…</td></tr>
+            <tr><td colspan="5" class="empty">Loading…</td></tr>
           </tbody>
         </table>
         <div id="add-person-form" class="inline-form" style="display:none">
@@ -222,6 +222,9 @@
             <div class="form-group">
               <label>Avatar</label>
               <input type="text" id="new-person-avatar" placeholder="avatar.png">
+            </div>
+            <div class="form-group" style="justify-content:center">
+              <label><input type="checkbox" id="new-person-in-rotation" checked> In rotation</label>
             </div>
             <div class="form-group" style="justify-content:flex-end">
               <button class="btn btn-success" onclick="addPerson()">Save</button>
@@ -543,14 +546,14 @@ async function loadManagement() {
 async function loadPeople() {
   clearError('people-error');
   const tbody = document.getElementById('people-tbody');
-  tbody.innerHTML = '<tr><td colspan="4" class="empty">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
   try {
     const res = await api('GET', '/people');
     people = (res.data || []).slice().sort((a, b) => a.ordinal - b.ordinal);
     const choresList = allChores.length ? allChores : (await api('GET', '/chores')).data || [];
     allChores = choresList;
     if (people.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">No people yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No people yet.</td></tr>';
       return;
     }
     tbody.innerHTML = people.map(p => personRowHTML(p)).join('');
@@ -561,6 +564,7 @@ async function loadPeople() {
 }
 
 function personRowHTML(p) {
+  const rotationCell = `<input type="checkbox" disabled ${p.in_rotation ? 'checked' : ''}>`;
   return `
     <tr id="person-row-${p.id}">
       <td>
@@ -569,6 +573,7 @@ function personRowHTML(p) {
       </td>
       <td>${p.ordinal}</td>
       <td>${esc(p.avatar)}</td>
+      <td style="text-align:center">${rotationCell}</td>
       <td style="display:flex;gap:0.4rem;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="showEditPerson(${p.id})">Edit</button>
         <button class="btn btn-ghost btn-sm" onclick="toggleRankings(${p.id})">Ratings</button>
@@ -576,7 +581,7 @@ function personRowHTML(p) {
       </td>
     </tr>
     <tr id="person-edit-${p.id}" style="display:none">
-      <td colspan="4" class="inline-form">
+      <td colspan="5" class="inline-form">
         <div class="form-row">
           <div class="form-group" style="flex:1">
             <label>Name</label>
@@ -590,6 +595,9 @@ function personRowHTML(p) {
             <label>Avatar</label>
             <input type="text" id="edit-avatar-${p.id}" value="${esc(p.avatar)}">
           </div>
+          <div class="form-group" style="justify-content:center">
+            <label><input type="checkbox" id="edit-in-rotation-${p.id}" ${p.in_rotation ? 'checked' : ''}> In rotation</label>
+          </div>
           <div class="form-group" style="justify-content:flex-end">
             <button class="btn btn-success btn-sm" onclick="savePerson(${p.id})">Save</button>
             <button class="btn btn-ghost btn-sm" onclick="hideEditPerson(${p.id})" style="margin-top:0.25rem">Cancel</button>
@@ -599,7 +607,7 @@ function personRowHTML(p) {
       </td>
     </tr>
     <tr id="person-rankings-${p.id}" style="display:none">
-      <td colspan="4" class="inline-form">
+      <td colspan="5" class="inline-form">
         <div id="rankings-error-${p.id}" class="error-banner"></div>
         <div class="rankings-grid" id="rankings-grid-${p.id}">Loading rankings…</div>
         <button class="btn btn-success btn-sm" style="margin-top:0.75rem"
@@ -621,12 +629,13 @@ async function savePerson(id) {
   const name   = document.getElementById('edit-name-' + id).value.trim();
   const ordinal = parseInt(document.getElementById('edit-ordinal-' + id).value);
   const avatar = document.getElementById('edit-avatar-' + id).value.trim();
+  const in_rotation = document.getElementById('edit-in-rotation-' + id).checked;
   if (!name || !avatar || isNaN(ordinal)) {
     showError('edit-person-error-' + id, 'All fields are required.');
     return;
   }
   try {
-    await api('PUT', '/people/' + id, { name, ordinal, avatar });
+    await api('PUT', '/people/' + id, { name, ordinal, avatar, in_rotation });
     await loadPeople();
   } catch(e) {
     showError('edit-person-error-' + id, e.message);
@@ -714,15 +723,17 @@ async function addPerson() {
   const name   = document.getElementById('new-person-name').value.trim();
   const ordinal = parseInt(document.getElementById('new-person-ordinal').value);
   const avatar = document.getElementById('new-person-avatar').value.trim();
+  const in_rotation = document.getElementById('new-person-in-rotation').checked;
   if (!name || !avatar || isNaN(ordinal)) {
     showError('add-person-error', 'All fields are required.');
     return;
   }
   try {
-    await api('POST', '/people', { name, ordinal, avatar });
+    await api('POST', '/people', { name, ordinal, avatar, in_rotation });
     document.getElementById('new-person-name').value = '';
     document.getElementById('new-person-ordinal').value = '';
     document.getElementById('new-person-avatar').value = '';
+    document.getElementById('new-person-in-rotation').checked = true;
     hideAddPersonForm();
     await loadPeople();
   } catch(e) {

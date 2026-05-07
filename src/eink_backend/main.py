@@ -176,6 +176,7 @@ async def lifespan(app: FastAPI):
     database_url = f"sqlite:///{database_path}"
     chores_db = ChoresDatabase(database_url)
     chores_db.init_db()
+    chores_db.migrate_db()
     _logger.info("Chores database initialized.")
 
     # Register chores router (must happen before OpenAPI schema generation)
