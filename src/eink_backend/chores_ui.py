@@ -369,8 +369,9 @@ function dueBadge(dateStr) {
   const diff = Math.floor((due - today) / 86400000); // days
   if (diff < 0)  return `<span class="badge badge-red">Overdue ${-diff}d</span>`;
   if (diff === 0) return `<span class="badge badge-yellow">Due today</span>`;
-  if (diff <= 7)  return `<span class="badge badge-yellow">In ${diff}d</span>`;
-  return `<span class="badge badge-green">In ${diff}d</span>`;
+  if (diff <= 1)  return `<span class="badge badge-yellow">In ${diff}d</span>`;
+  if (diff <= 7)  return `<span class="badge badge-green">In ${diff}d</span>`;
+  return `<span class="badge badge-grey">In ${diff}d</span>`;
 }
 
 // ============================================================
