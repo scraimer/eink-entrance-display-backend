@@ -77,7 +77,7 @@ def _is_data_type_relevant_at_time(data_type: str, now_utc: datetime.datetime) -
     Returns:
         True if the data type is relevant for display at the given time
     """
-    assert(now.tzinfo is None or now.tzinfo.utcoffset(now) == datetime.timedelta(0)), "now_utc must be timezone-aware in UTC"
+    assert(now_utc.tzinfo is None or now_utc.tzinfo.utcoffset(now_utc) == datetime.timedelta(0)), "now_utc must be timezone-aware in UTC"
     now = now_utc.replace(tzinfo=LOCAL_TZ)
     wkday = now.weekday()
     hour = now.hour
