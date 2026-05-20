@@ -33,6 +33,9 @@
 	},
 	"customizations": {
 		"vscode": {
+			"settings": {
+				"python.terminal.activateEnvironment": false
+			},
 			"extensions": [
 				"ms-azuretools.vscode-docker",
 				"ms-python.vscode-pylance",
