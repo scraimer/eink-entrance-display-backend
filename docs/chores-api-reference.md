@@ -428,6 +428,45 @@ PUT /executions/next-executor
 **Errors:**
 - 400: Invalid chore_id or executor_id
 
+### Bulk Update Next Due Date
+```
+PUT /executions/bulk-next-due-date
+```
+
+Updates the next due date for multiple chores in one transactional request.
+
+**Request:**
+```json
+{
+  "chore_ids": [1, 2, 3],
+  "next_execution_date": "2026-06-15"
+}
+```
+
+**Validation:**
+- `chore_ids` (required, array of integers, min 1 item, max 10 items, no duplicates)
+- `next_execution_date` (required, date-only in YYYY-MM-DD format)
+- If any chore ID does not exist, the request fails and no chores are updated
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "chore_ids": [1, 2, 3],
+    "next_execution_date": "2026-06-15",
+    "updated_count": 3
+  }
+}
+```
+
+**Transactional Semantics:**
+- All-or-nothing: if any item fails validation or lookup, no chore state is changed.
+
+**Errors:**
+- 404: One or more chore IDs not found
+- 422: Request validation failure (empty list, too many IDs, non-date value, duplicates)
+
 ## Rankings Endpoints
 
 ### Create or Update Ranking

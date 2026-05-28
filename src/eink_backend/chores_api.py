@@ -134,6 +134,29 @@ class ExecutionNextExecutorRequest(BaseModel):
         return v
 
 
+class BulkNextDueDateRequest(BaseModel):
+    """Request body for bulk next due date updates."""
+
+    chore_ids: List[int] = Field(..., min_items=1, max_items=10)
+    next_execution_date: date
+
+    @validator("chore_ids")
+    def validate_chore_ids(cls, value: List[int]) -> List[int]:
+        if any(chore_id < 1 for chore_id in value):
+            raise ValueError("All chore IDs must be positive integers")
+        if len(set(value)) != len(value):
+            raise ValueError("chore_ids must not contain duplicates")
+        return value
+
+
+class BulkNextDueDateResponse(BaseModel):
+    """Response body for bulk next due date updates."""
+
+    chore_ids: List[int]
+    next_execution_date: str
+    updated_count: int
+
+
 class RankingRequest(BaseModel):
     """Request body for creating/updating a ranking."""
 
@@ -1067,6 +1090,82 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     next_execution_date=chore_state.next_execution_date,
                     created_at=chore_state.created_at,
                     updated_at=chore_state.updated_at,
+                ),
+            )
+        except HTTPException:
+            session.rollback()
+            raise
+        except Exception as e:
+            session.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            session.close()
+
+    @router.put("/executions/bulk-next-due-date", response_model=APIResponse)
+    def bulk_update_next_due_date(request: BulkNextDueDateRequest):
+        """Update next due date for multiple chores in one all-or-nothing request."""
+        session = db.get_session()
+        try:
+            chore_ids = request.chore_ids
+            due_date = request.next_execution_date.isoformat()
+
+            existing_chores = session.query(Chore).filter(Chore.id.in_(chore_ids)).all()
+            existing_ids = {chore.id for chore in existing_chores}
+            missing_chore_ids = [chore_id for chore_id in chore_ids if chore_id not in existing_ids]
+            if missing_chore_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Chore(s) not found: {', '.join(str(chore_id) for chore_id in missing_chore_ids)}",
+                )
+
+            states = session.query(ChoreState).filter(ChoreState.chore_id.in_(chore_ids)).all()
+            states_by_chore_id = {state.chore_id: state for state in states}
+            missing_state_ids = [chore_id for chore_id in chore_ids if chore_id not in states_by_chore_id]
+            if missing_state_ids:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Chore state not found for chore(s): "
+                        f"{', '.join(str(chore_id) for chore_id in missing_state_ids)}"
+                    ),
+                )
+
+            now = utc_now_iso()
+            for chore_id in chore_ids:
+                state = states_by_chore_id[chore_id]
+                before_values = {
+                    "id": state.id,
+                    "chore_id": state.chore_id,
+                    "last_executor_id": state.last_executor_id,
+                    "last_execution_date": state.last_execution_date,
+                    "next_executor_id": state.next_executor_id,
+                    "next_execution_date": state.next_execution_date,
+                    "created_at": state.created_at,
+                    "updated_at": state.updated_at,
+                }
+
+                state.next_execution_date = due_date
+                state.updated_at = now
+
+                after_values = {
+                    "id": state.id,
+                    "chore_id": state.chore_id,
+                    "last_executor_id": state.last_executor_id,
+                    "last_execution_date": state.last_execution_date,
+                    "next_executor_id": state.next_executor_id,
+                    "next_execution_date": state.next_execution_date,
+                    "created_at": state.created_at,
+                    "updated_at": state.updated_at,
+                }
+                audit_update(session, "chore_state", state.id, before_values, after_values, "api")
+
+            session.commit()
+            return APIResponse(
+                success=True,
+                data=BulkNextDueDateResponse(
+                    chore_ids=chore_ids,
+                    next_execution_date=due_date,
+                    updated_count=len(chore_ids),
                 ),
             )
         except HTTPException:

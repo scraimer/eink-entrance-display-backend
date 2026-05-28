@@ -117,6 +117,32 @@
     font-size: 0.875rem; display: none;
   }
   .error-banner.visible { display: block; }
+  .success-banner {
+    background: #f0fff4; border: 1px solid #9ae6b4;
+    color: #276749; border-radius: 4px;
+    padding: 0.5rem 0.85rem; margin: 0.5rem 0;
+    font-size: 0.875rem; display: none;
+  }
+  .success-banner.visible { display: block; }
+
+  .bulk-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+    background: #f7fafc;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .bulk-count {
+    color: #4a5568;
+    font-size: 0.82rem;
+  }
+  .bulk-select-cell {
+    width: 2.5rem;
+    text-align: center;
+  }
 
   /* ---------- section toggle ---------- */
   .section-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
@@ -170,9 +196,29 @@
         <button class="btn btn-ghost btn-sm" onclick="loadChores()">↻ Refresh</button>
       </div>
       <div id="chores-error" class="error-banner"></div>
+      <div id="chores-success" class="success-banner"></div>
+      <div class="bulk-toolbar">
+        <div class="form-group">
+          <label for="bulk-next-date">Bulk Next Due Date</label>
+          <input type="date" id="bulk-next-date" onchange="updateBulkControls()">
+        </div>
+        <div class="form-group">
+          <button id="bulk-apply-btn" class="btn btn-primary" onclick="applyBulkNextDueDate()" disabled>
+            Apply to Selected
+          </button>
+          <span id="bulk-selection-count" class="bulk-count">0 selected</span>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="selectAllVisibleChores()">Select up to 10</button>
+          <button class="btn btn-ghost" onclick="clearBulkSelection()" style="margin-top:0.25rem">Clear</button>
+        </div>
+      </div>
       <table>
         <thead>
           <tr>
+            <th class="bulk-select-cell">
+              <input type="checkbox" id="bulk-select-all" onclick="event.stopPropagation()" onchange="toggleSelectAllFromHeader(this.checked)">
+            </th>
             <th>Chore</th>
             <th>Due Date</th>
             <th>Next Executor</th>
@@ -180,7 +226,7 @@
           </tr>
         </thead>
         <tbody id="chores-tbody">
-          <tr><td colspan="4" class="empty">Loading…</td></tr>
+          <tr><td colspan="5" class="empty">Loading…</td></tr>
         </tbody>
       </table>
     </div>
@@ -313,6 +359,9 @@ let allChores = [];   // from /chores list endpoint
 let summary = [];     // from /summary endpoint (chores + state + rankings)
 let peopleMap = {};   // id -> {name, ordinal}
 let choreStates = {}; // chore_id -> ChoreStateResponse
+let selectedChoreIds = new Set();
+
+const BULK_MAX_SELECTION = 10;
 
 const API = '/api/v1/chores';
 
@@ -338,6 +387,18 @@ function showError(id, msg) {
   el.classList.add('visible');
 }
 function clearError(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('visible');
+}
+function showSuccess(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+function clearSuccess(id) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = '';
@@ -396,8 +457,9 @@ function switchMgmtSection(section) {
 // ============================================================
 async function loadChores() {
   clearError('chores-error');
+  clearSuccess('chores-success');
   const tbody = document.getElementById('chores-tbody');
-  tbody.innerHTML = '<tr><td colspan="4" class="empty">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
   try {
     const [summaryRes, peopleRes] = await Promise.all([
       api('GET', '/summary'),
@@ -406,6 +468,8 @@ async function loadChores() {
     people = peopleRes.data || [];
     summary = summaryRes.data?.chores || [];
     peopleMap = Object.fromEntries(people.map(p => [p.id, p]));
+    const visibleIds = new Set(summary.map(chore => chore.id));
+    selectedChoreIds = new Set([...selectedChoreIds].filter(choreId => visibleIds.has(choreId)));
 
     // Sort: primary by next_execution_date asc (null last), secondary by next executor ordinal asc
     summary.sort((a, b) => {
@@ -422,7 +486,8 @@ async function loadChores() {
     });
 
     if (summary.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty">No chores yet. Add some in Management.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No chores yet. Add some in Management.</td></tr>';
+      updateBulkControls();
       return;
     }
 
@@ -433,20 +498,146 @@ async function loadChores() {
       const samePersonBadge = chore.same_person_next_time
         ? ' <span class="badge badge-purple" title="Same person next time">📌 Always same</span>'
         : '';
+      const checked = selectedChoreIds.has(chore.id) ? 'checked' : '';
       return `
         <tr id="chore-row-${i}" onclick="toggleChoreDetail(${i})" data-idx="${i}">
+          <td class="bulk-select-cell">
+            <input type="checkbox" ${checked}
+              onclick="event.stopPropagation()"
+              onchange="toggleBulkSelection(${chore.id}, this)">
+          </td>
           <td><strong>${esc(chore.name)}</strong>${samePersonBadge}</td>
           <td>${fmtDate(state.next_execution_date)} ${dueBadge(state.next_execution_date)}</td>
           <td>${esc(nextName)}</td>
           <td>${state.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>'}</td>
         </tr>
         <tr id="chore-detail-${i}" class="detail-row" style="display:none">
-          <td colspan="4">${choreDetailHTML(chore, state)}</td>
+          <td colspan="5">${choreDetailHTML(chore, state)}</td>
         </tr>`;
     }).join('');
+    updateBulkControls();
   } catch(e) {
     showError('chores-error', e.message);
     tbody.innerHTML = '';
+    updateBulkControls();
+  }
+}
+
+function updateBulkControls() {
+  const selectedCount = selectedChoreIds.size;
+  const dateValue = document.getElementById('bulk-next-date')?.value;
+  const applyBtn = document.getElementById('bulk-apply-btn');
+  const count = document.getElementById('bulk-selection-count');
+  const selectAll = document.getElementById('bulk-select-all');
+
+  if (count) count.textContent = `${selectedCount} selected`;
+  if (applyBtn) {
+    applyBtn.disabled = selectedCount === 0 || !dateValue;
+    applyBtn.textContent = `Apply to Selected (${selectedCount})`;
+  }
+
+  if (selectAll) {
+    const visibleCount = summary.length;
+    selectAll.checked = visibleCount > 0 && selectedCount > 0 && selectedCount === Math.min(visibleCount, BULK_MAX_SELECTION);
+  }
+}
+
+function toggleBulkSelection(choreId, checkboxEl) {
+  clearError('chores-error');
+  clearSuccess('chores-success');
+
+  const checked = !!checkboxEl?.checked;
+
+  if (checked) {
+    if (selectedChoreIds.size >= BULK_MAX_SELECTION) {
+      if (checkboxEl) checkboxEl.checked = false;
+      showError('chores-error', `You can select at most ${BULK_MAX_SELECTION} chores at a time.`);
+      return;
+    }
+    selectedChoreIds.add(choreId);
+  } else {
+    selectedChoreIds.delete(choreId);
+  }
+
+  updateBulkControls();
+}
+
+function clearBulkSelection() {
+  selectedChoreIds.clear();
+  clearError('chores-error');
+  clearSuccess('chores-success');
+  updateBulkCheckboxes();
+  updateBulkControls();
+}
+
+function selectAllVisibleChores() {
+  clearError('chores-error');
+  clearSuccess('chores-success');
+  selectedChoreIds.clear();
+  for (const chore of summary) {
+    if (selectedChoreIds.size >= BULK_MAX_SELECTION) break;
+    selectedChoreIds.add(chore.id);
+  }
+  if (summary.length > BULK_MAX_SELECTION) {
+    showError('chores-error', `Only the first ${BULK_MAX_SELECTION} chores were selected.`);
+  }
+  updateBulkCheckboxes();
+  updateBulkControls();
+}
+
+function toggleSelectAllFromHeader(checked) {
+  if (checked) {
+    selectAllVisibleChores();
+    return;
+  }
+  clearBulkSelection();
+}
+
+function updateBulkCheckboxes() {
+  const checkboxes = document.querySelectorAll('#chores-tbody input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    const row = cb.closest('tr');
+    const idx = row?.dataset?.idx;
+    if (idx === undefined) return;
+    const chore = summary[Number(idx)];
+    if (!chore) return;
+    cb.checked = selectedChoreIds.has(chore.id);
+  });
+}
+
+async function applyBulkNextDueDate() {
+  clearError('chores-error');
+  clearSuccess('chores-success');
+
+  const nextExecutionDate = document.getElementById('bulk-next-date').value;
+  const choreIds = Array.from(selectedChoreIds);
+
+  if (!nextExecutionDate) {
+    showError('chores-error', 'Please select a due date.');
+    return;
+  }
+  if (choreIds.length === 0) {
+    showError('chores-error', 'Select at least one chore.');
+    return;
+  }
+  if (choreIds.length > BULK_MAX_SELECTION) {
+    showError('chores-error', `You can select at most ${BULK_MAX_SELECTION} chores at a time.`);
+    return;
+  }
+
+  try {
+    const res = await api('PUT', '/executions/bulk-next-due-date', {
+      chore_ids: choreIds,
+      next_execution_date: nextExecutionDate,
+    });
+    selectedChoreIds.clear();
+    await loadChores();
+    showSuccess(
+      'chores-success',
+      `Updated ${res.data?.updated_count ?? choreIds.length} chores to due date ${nextExecutionDate}.`
+    );
+  } catch(e) {
+    showError('chores-error', `Bulk update failed. No chores were updated. ${e.message}`);
   }
 }
 
