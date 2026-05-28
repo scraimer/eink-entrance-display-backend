@@ -652,7 +652,7 @@ def collect_data(now_utc: datetime.datetime, force_refresh: bool = False):
         CacheMissError: If any required data is not in cache (unless force_refresh=True)
     """
     return PageData(
-        zmanim=get_cached_data_or_error("zmanim", now_utc=now_utc, force_refresh=force_refresh),
+        zmanim=efrat_zmanim.collect_data(now_utc=now_utc), # zmanim doesn't need cache, it's 100% local
         weather_forecast=get_cached_data_or_error("weather", now_utc=now_utc, force_refresh=force_refresh),
         calendar_content=get_cached_data_or_error("calendar", now_utc=now_utc, force_refresh=force_refresh),
         chores_content=get_cached_data_or_error("chores", now_utc=now_utc, force_refresh=force_refresh),
