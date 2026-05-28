@@ -14,6 +14,20 @@ you can launch the daemon.
     ~/go/bin/task docker_build
     ~/go/bin/task daemon_run
 
+### To Run in the Background
+
+To restart the container every 2 days at 5:00 AM, add this to your crontab:
+
+```crontab
+0 5 * * */2 docker container restart eink_backend_prod
+```
+
+To watch the logs:
+
+```shell
+docker logs -f eink_backend_prod
+```
+
 ### Google Credentials
 
 Read the instruction in `chores.py` to see how to get the Application to have access.
