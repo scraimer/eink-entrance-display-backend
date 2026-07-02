@@ -90,7 +90,7 @@ def main():
         execution_id = response.json()["data"]["execution"]["id"]
         print(f"   ✓ Created execution {execution_id}")
         print(f"   ✓ Last executor: {state['last_executor_id']} ({person_to_delete.name})")
-        print(f"   ✓ Next executor: {state['next_executor_id']}")
+        print(f"   ✓ Fixed executor: {state['fixed_executor_id']}")
         
         # Create a ranking with the person to be deleted
         print(f"\n3. Creating ranking with {person_to_delete.name}...")
@@ -151,9 +151,9 @@ def main():
         ).first()
         assert chore_state is not None, "ChoreState was deleted"
         assert chore_state.last_executor_id is None, "last_executor_id not set to NULL"
-        assert chore_state.next_executor_id is not None, "next_executor_id was set to NULL (should not be)"
+        assert chore_state.fixed_executor_id is None, "fixed_executor_id should remain NULL for normal chores"
         print(f"   ✓ ChoreState.last_executor_id set to NULL")
-        print(f"   ✓ ChoreState.next_executor_id preserved: {chore_state.next_executor_id}")
+        print(f"   ✓ ChoreState.fixed_executor_id preserved: {chore_state.fixed_executor_id}")
         
         # Verify audit log entries
         print("\n7. Verifying audit log entries...")

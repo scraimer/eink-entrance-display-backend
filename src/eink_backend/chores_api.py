@@ -3,7 +3,7 @@ FastAPI routes for chores management API.
 
 Provides REST endpoints for:
 - Chore management (CRUD)
-- Person management (CRUD)
+                    "fixed_executor_id": state.fixed_executor_id,
 - Execution tracking and scheduling
 - Rankings management
 - Audit log queries
@@ -30,6 +30,7 @@ from .chores_db import (
     ExecutionData,
     RankingData,
     AuditLogEntryData,
+    compute_chore_scores,
     utc_now_iso,
     utc_today_iso,
     serialize_to_json,
@@ -94,7 +95,7 @@ class ChoreStateResponse(BaseModel):
     chore_id: int
     last_executor_id: Optional[int] = None
     last_execution_date: Optional[str] = None
-    next_executor_id: Optional[int] = None
+    fixed_executor_id: Optional[int] = None
     next_execution_date: Optional[str] = None
     created_at: str
     updated_at: str
@@ -121,7 +122,7 @@ class ExecutionNextExecutorRequest(BaseModel):
     """Request body for modifying next executor."""
 
     chore_id: int = Field(..., ge=1)
-    next_executor_id: Optional[int] = Field(None, ge=1)
+    fixed_executor_id: Optional[int] = Field(None, ge=1)
     next_execution_date: Optional[str] = None
 
     @validator("next_execution_date")
@@ -236,6 +237,17 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
     """
     session = db.get_session()
     try:
+        people = (
+            session.query(Person)
+            .filter(Person.in_rotation == True)  # noqa: E712
+            .order_by(Person.ordinal)
+            .all()
+        )
+
+        scores_by_chore: dict[int, list[dict[str, Any]]] = {}
+        for person_id, chore_id, score in compute_chore_scores(session):
+            scores_by_chore.setdefault(chore_id, []).append({"person_id": person_id, "score": score})
+
         chores = (
             session.query(Chore)
             .options(
@@ -248,6 +260,11 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
         chores_data = []
         for chore in chores:
             state = chore.state
+            person_scores = scores_by_chore.get(chore.id, [])
+            next_executor_id = (
+                state.fixed_executor_id if chore.same_person_next_time and state else
+                (person_scores[0]["person_id"] if person_scores else None)
+            )
             chores_data.append({
                 "id": chore.id,
                 "name": chore.name,
@@ -258,11 +275,13 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
                     "chore_id": state.chore_id,
                     "last_executor_id": state.last_executor_id,
                     "last_execution_date": state.last_execution_date,
-                    "next_executor_id": state.next_executor_id,
+                    "fixed_executor_id": state.fixed_executor_id,
                     "next_execution_date": state.next_execution_date,
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,
                 } if state else None,
+                "next_executor_id": next_executor_id,
+                "person_scores": person_scores if not chore.same_person_next_time else [],
                 "rankings": (
                     []
                     if chore.same_person_next_time
@@ -529,7 +548,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             # Update chore_state to set executor_ids to NULL
             chore_states = session.query(ChoreState).filter(
                 (ChoreState.last_executor_id == person_id) |
-                (ChoreState.next_executor_id == person_id)
+                (ChoreState.fixed_executor_id == person_id)
             ).all()
             for state in chore_states:
                 before_state = {
@@ -537,7 +556,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "chore_id": state.chore_id,
                     "last_executor_id": state.last_executor_id,
                     "last_execution_date": state.last_execution_date,
-                    "next_executor_id": state.next_executor_id,
+                    "fixed_executor_id": state.fixed_executor_id,
                     "next_execution_date": state.next_execution_date,
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,
@@ -546,8 +565,8 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 # Update the state
                 if state.last_executor_id == person_id:
                     state.last_executor_id = None
-                if state.next_executor_id == person_id:
-                    state.next_executor_id = None
+                if state.fixed_executor_id == person_id:
+                    state.fixed_executor_id = None
                 state.updated_at = utc_now_iso()
                 
                 after_state = {
@@ -555,7 +574,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "chore_id": state.chore_id,
                     "last_executor_id": state.last_executor_id,
                     "last_execution_date": state.last_execution_date,
-                    "next_executor_id": state.next_executor_id,
+                    "fixed_executor_id": state.fixed_executor_id,
                     "next_execution_date": state.next_execution_date,
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,
@@ -637,7 +656,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "chore_id": chore_state.chore_id,
                     "last_executor_id": None,
                     "last_execution_date": None,
-                    "next_executor_id": None,
+                    "fixed_executor_id": None,
                     "next_execution_date": None,
                     "created_at": chore_state.created_at,
                     "updated_at": chore_state.updated_at,
@@ -858,29 +877,6 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             session.add(execution)
             session.flush()
 
-            # Build rotation pool: only in_rotation=True people, ordered by ordinal
-            rotation_pool = (
-                session.query(Person)
-                .filter(Person.in_rotation == True)  # noqa: E712
-                .order_by(Person.ordinal)
-                .all()
-            )
-            if not rotation_pool:
-                raise HTTPException(status_code=400, detail="No people in the rotation pool")
-
-            if chore.same_person_next_time:
-                # Keep the same executor — do not rotate
-                next_executor_id = request.executor_id
-            else:
-                # Find next executor in round-robin within the rotation pool
-                pool_ids = [p.id for p in rotation_pool]
-                if request.executor_id in pool_ids:
-                    current_index = pool_ids.index(request.executor_id)
-                else:
-                    current_index = -1
-                next_index = (current_index + 1) % len(rotation_pool)
-                next_executor_id = rotation_pool[next_index].id
-
             # Calculate next execution date
             execution_date = datetime.strptime(today, "%Y-%m-%d").date()
             next_exec_date = execution_date + timedelta(weeks=chore.frequency_in_weeks)
@@ -899,7 +895,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,
@@ -908,7 +904,8 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             # Update state
             chore_state.last_executor_id = request.executor_id
             chore_state.last_execution_date = today
-            chore_state.next_executor_id = next_executor_id
+            if chore.same_person_next_time:
+                chore_state.fixed_executor_id = request.executor_id
             chore_state.next_execution_date = next_execution_date
             chore_state.updated_at = now
 
@@ -918,7 +915,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,
@@ -957,7 +954,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                         chore_id=chore_state.chore_id,
                         last_executor_id=chore_state.last_executor_id,
                         last_execution_date=chore_state.last_execution_date,
-                        next_executor_id=chore_state.next_executor_id,
+                        fixed_executor_id=chore_state.fixed_executor_id,
                         next_execution_date=chore_state.next_execution_date,
                         created_at=chore_state.created_at,
                         updated_at=chore_state.updated_at,
@@ -1021,7 +1018,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
 
     @router.put("/executions/next-executor", response_model=APIResponse)
     def modify_next_executor(request: ExecutionNextExecutorRequest):
-        """Modify next executor and/or next execution date for a chore."""
+        """Modify fixed executor and/or next execution date for a chore."""
         session = db.get_session()
         try:
             # Validate chore exists
@@ -1037,9 +1034,9 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 raise HTTPException(status_code=404, detail="Chore state not found")
 
             # Validate person if provided
-            if request.next_executor_id:
+            if request.fixed_executor_id:
                 person = session.query(Person).filter(
-                    Person.id == request.next_executor_id
+                    Person.id == request.fixed_executor_id
                 ).first()
                 if not person:
                     raise HTTPException(status_code=404, detail="Person not found")
@@ -1050,15 +1047,15 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,
             }
 
             # Update
-            if request.next_executor_id is not None:
-                chore_state.next_executor_id = request.next_executor_id
+            if request.fixed_executor_id is not None:
+                chore_state.fixed_executor_id = request.fixed_executor_id
             if request.next_execution_date:
                 chore_state.next_execution_date = request.next_execution_date
             chore_state.updated_at = utc_now_iso()
@@ -1069,7 +1066,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,
@@ -1086,7 +1083,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     chore_id=chore_state.chore_id,
                     last_executor_id=chore_state.last_executor_id,
                     last_execution_date=chore_state.last_execution_date,
-                    next_executor_id=chore_state.next_executor_id,
+                    fixed_executor_id=chore_state.fixed_executor_id,
                     next_execution_date=chore_state.next_execution_date,
                     created_at=chore_state.created_at,
                     updated_at=chore_state.updated_at,
@@ -1138,7 +1135,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "chore_id": state.chore_id,
                     "last_executor_id": state.last_executor_id,
                     "last_execution_date": state.last_execution_date,
-                    "next_executor_id": state.next_executor_id,
+                    "fixed_executor_id": state.fixed_executor_id,
                     "next_execution_date": state.next_execution_date,
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,
@@ -1152,7 +1149,7 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                     "chore_id": state.chore_id,
                     "last_executor_id": state.last_executor_id,
                     "last_execution_date": state.last_execution_date,
-                    "next_executor_id": state.next_executor_id,
+                    "fixed_executor_id": state.fixed_executor_id,
                     "next_execution_date": state.next_execution_date,
                     "created_at": state.created_at,
                     "updated_at": state.updated_at,

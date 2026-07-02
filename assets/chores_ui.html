@@ -362,6 +362,7 @@ let choreStates = {}; // chore_id -> ChoreStateResponse
 let selectedChoreIds = new Set();
 
 const BULK_MAX_SELECTION = 10;
+const DUE_SOON_REBALANCE_MAX_ITERATIONS = 12;
 
 const API = '/api/v1/chores';
 
@@ -415,12 +416,166 @@ function fmtTs(s) {
   return s.replace('T', ' ').substring(0, 16);
 }
 
-function dueBadge(dateStr) {
-  if (!dateStr) return '<span class="badge badge-grey">No date</span>';
+function getDueDayDiff(dateStr) {
+  if (!dateStr) return null;
   const due = new Date(dateStr);
   const today = new Date();
   today.setHours(0,0,0,0);
-  const diff = Math.floor((due - today) / 86400000); // days
+  return Math.floor((due - today) / 86400000);
+}
+
+function buildDueSoonCounts(chores, rotationPersonIds) {
+  const counts = new Map(rotationPersonIds.map(id => [id, 0]));
+  chores.forEach(chore => {
+    const nextId = chore.next_executor_id;
+    if (counts.has(nextId)) {
+      counts.set(nextId, (counts.get(nextId) || 0) + 1);
+    }
+  });
+  return counts;
+}
+
+function minMaxCount(counts, rotationPersonIds) {
+  let minCount = Infinity;
+  let maxCount = -Infinity;
+  let minPersonId = null;
+  let maxPersonId = null;
+
+  rotationPersonIds.forEach(id => {
+    const count = counts.get(id) || 0;
+    if (count < minCount) {
+      minCount = count;
+      minPersonId = id;
+    }
+    if (count > maxCount) {
+      maxCount = count;
+      maxPersonId = id;
+    }
+  });
+
+  return { minCount, maxCount, minPersonId, maxPersonId };
+}
+
+function rebalanceDueSoonAssignments(chores, peopleList) {
+  const rotationPersonIds = (peopleList || [])
+    .filter(p => p.in_rotation)
+    .map(p => p.id);
+
+  if (rotationPersonIds.length < 2) {
+    return { warning: null };
+  }
+
+  const dueSoonChores = chores.filter(chore => {
+    const diff = getDueDayDiff(chore.state?.next_execution_date);
+    return diff === 0 || diff === 1;
+  });
+
+  if (dueSoonChores.length === 0) {
+    return { warning: null };
+  }
+
+  const adjustable = dueSoonChores.filter(chore => (
+    !chore.same_person_next_time &&
+    Array.isArray(chore.person_scores) &&
+    chore.person_scores.length > 1
+  ));
+
+  const scoreOrderByChore = new Map();
+  const scoreIndexByChore = new Map();
+  adjustable.forEach(chore => {
+    const order = chore.person_scores.map(s => s.person_id);
+    scoreOrderByChore.set(chore.id, order);
+    const currentIdx = Math.max(0, order.indexOf(chore.next_executor_id));
+    scoreIndexByChore.set(chore.id, currentIdx);
+  });
+
+  let iterations = 0;
+  while (iterations < DUE_SOON_REBALANCE_MAX_ITERATIONS) {
+    const counts = buildDueSoonCounts(dueSoonChores, rotationPersonIds);
+    const { minCount, maxCount, minPersonId, maxPersonId } = minMaxCount(counts, rotationPersonIds);
+
+    if (maxCount - minCount <= 1) {
+      return { warning: null };
+    }
+
+    let bestMove = null;
+
+    adjustable.forEach(chore => {
+      if (chore.next_executor_id !== maxPersonId) {
+        return;
+      }
+
+      const order = scoreOrderByChore.get(chore.id) || [];
+      const currentIdx = scoreIndexByChore.get(chore.id) ?? -1;
+      const nextIdx = currentIdx + 1;
+      if (nextIdx >= order.length) {
+        return;
+      }
+
+      const nextPersonId = order[nextIdx];
+      if (!rotationPersonIds.includes(nextPersonId)) {
+        return;
+      }
+
+      const newCounts = new Map(counts);
+      newCounts.set(maxPersonId, (newCounts.get(maxPersonId) || 0) - 1);
+      newCounts.set(nextPersonId, (newCounts.get(nextPersonId) || 0) + 1);
+      const nextMinMax = minMaxCount(newCounts, rotationPersonIds);
+      const newGap = nextMinMax.maxCount - nextMinMax.minCount;
+
+      const move = {
+        chore,
+        nextIdx,
+        nextPersonId,
+        newGap,
+        helpsLeastLoaded: nextPersonId === minPersonId,
+      };
+
+      if (!bestMove) {
+        bestMove = move;
+        return;
+      }
+
+      if (move.newGap < bestMove.newGap) {
+        bestMove = move;
+        return;
+      }
+
+      if (
+        move.newGap === bestMove.newGap &&
+        move.helpsLeastLoaded &&
+        !bestMove.helpsLeastLoaded
+      ) {
+        bestMove = move;
+      }
+    });
+
+    if (!bestMove) {
+      return {
+        warning: `Fairness warning: could not rebalance due today/tomorrow chores using score order (stopped after ${iterations} iterations).`,
+      };
+    }
+
+    bestMove.chore.next_executor_id = bestMove.nextPersonId;
+    scoreIndexByChore.set(bestMove.chore.id, bestMove.nextIdx);
+    iterations += 1;
+  }
+
+  const counts = buildDueSoonCounts(dueSoonChores, rotationPersonIds);
+  const { minCount, maxCount } = minMaxCount(counts, rotationPersonIds);
+  if (maxCount - minCount > 1) {
+    return {
+      warning: `Fairness warning: could not fully rebalance due today/tomorrow chores within ${DUE_SOON_REBALANCE_MAX_ITERATIONS} iterations.`,
+    };
+  }
+
+  return { warning: null };
+}
+
+function dueBadge(dateStr) {
+  if (!dateStr) return '<span class="badge badge-grey">No date</span>';
+  const diff = getDueDayDiff(dateStr);
+  if (diff === null) return '<span class="badge badge-grey">No date</span>';
   if (diff < 0)  return `<span class="badge badge-red">Overdue ${-diff}d</span>`;
   if (diff === 0) return `<span class="badge badge-yellow">Due today</span>`;
   if (diff <= 1)  return `<span class="badge badge-yellow">In ${diff}d</span>`;
@@ -468,6 +623,10 @@ async function loadChores() {
     people = peopleRes.data || [];
     summary = summaryRes.data?.chores || [];
     peopleMap = Object.fromEntries(people.map(p => [p.id, p]));
+    const rebalanceResult = rebalanceDueSoonAssignments(summary, people);
+    if (rebalanceResult.warning) {
+      showError('chores-error', rebalanceResult.warning);
+    }
     const visibleIds = new Set(summary.map(chore => chore.id));
     selectedChoreIds = new Set([...selectedChoreIds].filter(choreId => visibleIds.has(choreId)));
 
@@ -480,8 +639,8 @@ async function loadChores() {
       } else if (da) return -1;
       else if (db) return 1;
       // secondary: ordinal asc
-      const oa = peopleMap[a.state?.next_executor_id]?.ordinal ?? Infinity;
-      const ob = peopleMap[b.state?.next_executor_id]?.ordinal ?? Infinity;
+      const oa = peopleMap[a.next_executor_id]?.ordinal ?? Infinity;
+      const ob = peopleMap[b.next_executor_id]?.ordinal ?? Infinity;
       return oa - ob;
     });
 
@@ -493,11 +652,12 @@ async function loadChores() {
 
     tbody.innerHTML = summary.map((chore, i) => {
       const state = chore.state || {};
-      const nextPerson = peopleMap[state.next_executor_id];
+      const nextPerson = peopleMap[chore.next_executor_id];
       const nextName = nextPerson ? nextPerson.name : '—';
       const samePersonBadge = chore.same_person_next_time
         ? ' <span class="badge badge-purple" title="Same person next time">📌 Always same</span>'
         : '';
+      const scoreCount = Array.isArray(chore.person_scores) ? chore.person_scores.length : 0;
       const checked = selectedChoreIds.has(chore.id) ? 'checked' : '';
       return `
         <tr id="chore-row-${i}" onclick="toggleChoreDetail(${i})" data-idx="${i}">
@@ -509,7 +669,7 @@ async function loadChores() {
           <td><strong>${esc(chore.name)}</strong>${samePersonBadge}</td>
           <td>${fmtDate(state.next_execution_date)} ${dueBadge(state.next_execution_date)}</td>
           <td>${esc(nextName)}</td>
-          <td>${state.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>'}</td>
+          <td>${chore.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>'}${samePersonBadge && scoreCount ? '' : ''}</td>
         </tr>
         <tr id="chore-detail-${i}" class="detail-row" style="display:none">
           <td colspan="5">${choreDetailHTML(chore, state)}</td>
@@ -643,8 +803,16 @@ async function applyBulkNextDueDate() {
 
 function choreDetailHTML(chore, state) {
   const lastPerson = peopleMap[state.last_executor_id];
-  const nextPerson = peopleMap[state.next_executor_id];
-  const canMarkDone = !!state.next_executor_id;
+  const nextPerson = peopleMap[chore.next_executor_id];
+  const canMarkDone = !!chore.next_executor_id;
+  const scoreRows = (chore.person_scores || []).map(score => {
+    const person = peopleMap[score.person_id];
+    const isNext = score.person_id === chore.next_executor_id;
+    return `<div class="ranking-item" style="${isNext ? 'font-weight:700' : ''}">
+      <label>${esc(person ? person.name : String(score.person_id))}</label>
+      <span class="badge badge-grey">${score.score}</span>
+    </div>`;
+  }).join('');
   const personOptions = people.map(p =>
     `<option value="${p.id}">${esc(p.name)}</option>`
   ).join('');
@@ -656,11 +824,12 @@ function choreDetailHTML(chore, state) {
       <dt>Next Date</dt><dd>${fmtDate(state.next_execution_date)}</dd>
       <dt>Frequency</dt><dd>Every ${chore.frequency_in_weeks} week${chore.frequency_in_weeks !== 1 ? 's' : ''}</dd>
     </dl>
+    ${chore.same_person_next_time ? `<div style="margin:0.5rem 0 0.75rem"><span class="badge badge-purple">Fixed executor</span></div>` : `<div class="rankings-grid" style="margin-top:0.25rem">${scoreRows}</div>`}
     <div id="done-error-${chore.id}" class="error-banner"></div>
     <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
       <button class="btn btn-success btn-sm"
         ${canMarkDone ? '' : 'disabled title="No next executor scheduled"'}
-        onclick="markDone(${chore.id}, ${state.next_executor_id})">
+        onclick="markDone(${chore.id}, ${chore.next_executor_id})">
         ✓ Mark as Done
       </button>
       ${canMarkDone ? `<a href="#" id="done-by-other-link-${chore.id}"
@@ -1031,7 +1200,7 @@ function showEditSchedule(choreId) {
   const sel = document.getElementById('sched-executor-' + choreId);
   sel.innerHTML = '<option value="">— None —</option>' +
     people.map(p =>
-      `<option value="${p.id}" ${p.id === state.next_executor_id ? 'selected' : ''}>${esc(p.name)}</option>`
+      `<option value="${p.id}" ${p.id === state.fixed_executor_id ? 'selected' : ''}>${esc(p.name)}</option>`
     ).join('');
   clearError('sched-error-' + choreId);
   document.getElementById('chore-sched-edit-' + choreId).style.display = '';
@@ -1046,15 +1215,15 @@ async function saveSchedule(choreId) {
   clearError('sched-error-' + choreId);
   const date = document.getElementById('sched-date-' + choreId).value;
   const executorVal = document.getElementById('sched-executor-' + choreId).value;
-  const next_executor_id = executorVal ? parseInt(executorVal) : null;
-  if (!date && !next_executor_id) {
+  const fixed_executor_id = executorVal ? parseInt(executorVal) : null;
+  if (!date && !fixed_executor_id) {
     showError('sched-error-' + choreId, 'Please provide a date or select an executor.');
     return;
   }
   try {
     await api('PUT', '/executions/next-executor', {
       chore_id: choreId,
-      next_executor_id: next_executor_id,
+      fixed_executor_id: fixed_executor_id,
       next_execution_date: date || null,
     });
     hideEditSchedule(choreId);

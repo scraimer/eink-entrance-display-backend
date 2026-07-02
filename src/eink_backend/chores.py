@@ -79,7 +79,7 @@ def get_chores_from_database() -> List["Chore"]:
             except (ValueError, TypeError):
                 due = date.today()
 
-        next_executor_id = state.get("next_executor_id")
+        next_executor_id = state.get("fixed_executor_id") or chore_data.get("next_executor_id")
         assignee = people_by_id.get(next_executor_id, "") if next_executor_id else ""
 
         chores_list.append(Chore(

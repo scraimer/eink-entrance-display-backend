@@ -168,7 +168,7 @@ def migrate_chores_from_sheets(db: ChoresDatabase, chores_data: list) -> None:
                     "chore_id": chore_state.chore_id,
                     "last_executor_id": None,
                     "last_execution_date": None,
-                    "next_executor_id": None,
+                    "fixed_executor_id": None,
                     "next_execution_date": None,
                     "created_at": chore_state.created_at,
                     "updated_at": chore_state.updated_at,

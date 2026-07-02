@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Tests for bulk next due date update API and chores UI wiring."""
 
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+src_path = Path(__file__).parent / "src"
+sys.path.insert(0, str(src_path))
 
 from eink_backend.chores_api import create_chores_router
 from eink_backend.chores_db import ChoreState, ChoresDatabase
@@ -128,7 +132,7 @@ def test_bulk_next_due_date_is_all_or_nothing_on_failure():
             "/api/v1/chores/executions/next-executor",
             json={
                 "chore_id": chore_id,
-                "next_executor_id": None,
+                "fixed_executor_id": None,
                 "next_execution_date": "2026-06-01",
             },
         )

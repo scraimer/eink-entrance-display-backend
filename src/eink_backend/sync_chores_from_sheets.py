@@ -302,7 +302,7 @@ def insert_chores(db: ChoresDatabase, chores_data: List[Dict[str, Any]]) -> Tupl
                     "chore_id": chore_state.chore_id,
                     "last_executor_id": None,
                     "last_execution_date": None,
-                    "next_executor_id": None,
+                    "fixed_executor_id": None,
                     "next_execution_date": None,
                     "created_at": chore_state.created_at,
                     "updated_at": chore_state.updated_at,
@@ -450,7 +450,7 @@ def update_chore_states(
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,
@@ -458,7 +458,7 @@ def update_chore_states(
 
             chore_state.last_executor_id = last_executor_id
             chore_state.last_execution_date = last_execution_date
-            chore_state.next_executor_id = next_executor_id
+            chore_state.fixed_executor_id = next_executor_id
             chore_state.next_execution_date = next_execution_date
             chore_state.updated_at = now
 
@@ -467,7 +467,7 @@ def update_chore_states(
                 "chore_id": chore_state.chore_id,
                 "last_executor_id": chore_state.last_executor_id,
                 "last_execution_date": chore_state.last_execution_date,
-                "next_executor_id": chore_state.next_executor_id,
+                "fixed_executor_id": chore_state.fixed_executor_id,
                 "next_execution_date": chore_state.next_execution_date,
                 "created_at": chore_state.created_at,
                 "updated_at": chore_state.updated_at,

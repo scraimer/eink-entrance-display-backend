@@ -90,11 +90,15 @@ def test_execution_and_scheduling(client, chore_id, person_id):
     print(f"✓ Created execution for chore {chore_id}")
     print(f"  - Executor: {execution['executor_id']}")
     print(f"  - Date: {execution['execution_date']}")
-    print(f"  - Next executor: {state['next_executor_id']}")
+    print(f"  - Fixed executor: {state['fixed_executor_id']}")
     print(f"  - Next execution: {state['next_execution_date']}")
     
-    # Verify next executor was calculated (round-robin)
-    assert state["next_executor_id"] is not None, "Next executor not calculated"
+    # Verify state updates and summary computation work
+    summary = client.get("/api/v1/chores/summary")
+    assert summary.status_code == 200
+    chores = {chore["id"]: chore for chore in summary.json()["data"]["chores"]}
+    assert chores[chore_id]["next_executor_id"] is not None, "Next executor not calculated"
+    assert state["fixed_executor_id"] is None
     assert state["next_execution_date"] is not None, "Next execution date not calculated"
     
     return execution["id"]

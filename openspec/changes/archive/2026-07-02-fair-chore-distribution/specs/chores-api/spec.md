@@ -5,14 +5,14 @@ All API endpoints that read or write a `Chore` resource SHALL include the `same_
 
 #### Scenario: GET chore returns flag
 - **WHEN** a client calls `GET /api/v1/chores/{chore_id}`
-- **THEN** the response body SHALL include "same_person_next_time": true or "same_person_next_time": false
+- **THEN** the response body SHALL include `"same_person_next_time": true` or `"same_person_next_time": false`
 
 #### Scenario: GET chores list returns flag
 - **WHEN** a client calls `GET /api/v1/chores`
 - **THEN** every chore object in the response SHALL include the `same_person_next_time` field
 
 #### Scenario: POST chore accepts flag
-- **WHEN** a client calls `POST /api/v1/chores` with "same_person_next_time": true
+- **WHEN** a client calls `POST /api/v1/chores` with `"same_person_next_time": true`
 - **THEN** the created chore SHALL have `same_person_next_time` set to `true`
 
 #### Scenario: POST chore defaults flag to false

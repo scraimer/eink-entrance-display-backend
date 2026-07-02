@@ -24,6 +24,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
     CheckConstraint,
+    text,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
@@ -55,8 +56,8 @@ class Person(Base):
     last_executed_chores = relationship(
         "ChoreState", foreign_keys="ChoreState.last_executor_id", back_populates="last_executor"
     )
-    next_executor_chores = relationship(
-        "ChoreState", foreign_keys="ChoreState.next_executor_id", back_populates="next_executor"
+    fixed_executor_chores = relationship(
+        "ChoreState", foreign_keys="ChoreState.fixed_executor_id", back_populates="fixed_executor"
     )
 
 
@@ -89,7 +90,7 @@ class ChoreState(Base):
     chore_id = Column(Integer, ForeignKey("chores.id", ondelete="CASCADE"), nullable=False, unique=True)
     last_executor_id = Column(Integer, ForeignKey("people.id", ondelete="SET NULL"), nullable=True)
     last_execution_date = Column(String, nullable=True)  # ISO 8601 date format
-    next_executor_id = Column(Integer, ForeignKey("people.id", ondelete="SET NULL"), nullable=True)
+    fixed_executor_id = Column(Integer, ForeignKey("people.id", ondelete="SET NULL"), nullable=True)
     next_execution_date = Column(String, nullable=True)  # ISO 8601 date format
     created_at = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
@@ -99,8 +100,8 @@ class ChoreState(Base):
     last_executor = relationship(
         "Person", foreign_keys=[last_executor_id], back_populates="last_executed_chores"
     )
-    next_executor = relationship(
-        "Person", foreign_keys=[next_executor_id], back_populates="next_executor_chores"
+    fixed_executor = relationship(
+        "Person", foreign_keys=[fixed_executor_id], back_populates="fixed_executor_chores"
     )
 
 
@@ -212,6 +213,57 @@ class ChoresDatabase:
                     "ALTER TABLE people ADD COLUMN in_rotation INTEGER NOT NULL DEFAULT 1"
                 )
                 con.commit()
+
+            chore_state_cols = {row[1] for row in con.execute("PRAGMA table_info(chore_state)")}
+            if chore_state_cols and "next_executor_id" in chore_state_cols:
+                con.execute("PRAGMA foreign_keys=OFF")
+                con.execute("BEGIN")
+                con.execute(
+                    """
+                    CREATE TABLE chore_state_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        chore_id INTEGER NOT NULL UNIQUE REFERENCES chores(id) ON DELETE CASCADE,
+                        last_executor_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+                        last_execution_date TEXT,
+                        fixed_executor_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+                        next_execution_date TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                    """
+                )
+                con.execute(
+                    """
+                    INSERT INTO chore_state_new (
+                        id,
+                        chore_id,
+                        last_executor_id,
+                        last_execution_date,
+                        fixed_executor_id,
+                        next_execution_date,
+                        created_at,
+                        updated_at
+                    )
+                    SELECT
+                        state.id,
+                        state.chore_id,
+                        state.last_executor_id,
+                        state.last_execution_date,
+                        CASE
+                            WHEN chores.same_person_next_time = 1 THEN state.next_executor_id
+                            ELSE NULL
+                        END,
+                        state.next_execution_date,
+                        state.created_at,
+                        state.updated_at
+                    FROM chore_state AS state
+                    JOIN chores ON chores.id = state.chore_id
+                    """
+                )
+                con.execute("DROP TABLE chore_state")
+                con.execute("ALTER TABLE chore_state_new RENAME TO chore_state")
+                con.commit()
+                con.execute("PRAGMA foreign_keys=ON")
         finally:
             con.close()
 
@@ -262,7 +314,7 @@ class ChoreStateData:
     chore_id: int = 0
     last_executor_id: Optional[int] = None
     last_execution_date: Optional[str] = None
-    next_executor_id: Optional[int] = None
+    fixed_executor_id: Optional[int] = None
     next_execution_date: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -327,6 +379,65 @@ def serialize_to_json(data: dict) -> str:
             return super().default(obj)
 
     return json.dumps(data, cls=DateTimeEncoder)
+
+
+# Number of days back to look when counting executions for scoring purposes.
+# Executions older than this window do not contribute to the execution count.
+SCORE_EXECUTION_WINDOW_DAYS = 730  # 2 years
+
+# Maximum number of days since last execution used in the recency term.
+# Beyond this cap the recency advantage stops growing.
+SCORE_RECENCY_CAP_DAYS = 365
+
+
+def compute_chore_scores(session: Session) -> list[tuple[int, int, int]]:
+    """Compute weighted scores for every in-rotation person and chore pair.
+
+    Only executions within the last SCORE_EXECUTION_WINDOW_DAYS days are counted.
+    The recency term is capped at SCORE_RECENCY_CAP_DAYS.
+
+    Returns:
+        List of (person_id, chore_id, score) tuples, one row per eligible pair.
+    """
+    query = text(
+        f"""
+        SELECT
+            p.id AS person_id,
+            c.id AS chore_id,
+            (
+                COALESCE(COUNT(e.id), 0) * 1000
+                - COALESCE(
+                    MIN(CAST(julianday('now') - julianday(MAX(e.execution_date)) AS INTEGER), {SCORE_RECENCY_CAP_DAYS}),
+                    {SCORE_RECENCY_CAP_DAYS}
+                )
+            ) AS score
+        FROM people AS p
+        CROSS JOIN chores AS c
+        LEFT JOIN executions AS e
+            ON e.executor_id = p.id
+           AND e.chore_id = c.id
+           AND julianday('now') - julianday(e.execution_date) <= {SCORE_EXECUTION_WINDOW_DAYS}
+        WHERE p.in_rotation = 1
+        GROUP BY p.id, c.id
+        ORDER BY c.id, score ASC, p.ordinal ASC, p.id ASC
+        """
+    )
+    rows = session.execute(query).all()
+    return [(int(row.person_id), int(row.chore_id), int(row.score)) for row in rows]
+
+
+def get_next_executor_id(session: Session, chore: Chore) -> Optional[int]:
+    """Return the next executor for a chore using weighted scores.
+
+    Fixed-executor chores bypass scoring and return their stored fixed executor.
+    """
+    if chore.same_person_next_time:
+        return chore.state.fixed_executor_id if chore.state else None
+
+    chore_scores = [row for row in compute_chore_scores(session) if row[1] == chore.id]
+    if not chore_scores:
+        return None
+    return chore_scores[0][0]
 
 
 def utc_now_iso() -> str:

@@ -67,13 +67,19 @@ def create_chore(client: TestClient, name: str, freq: int = 1, same_person: bool
     return r.json()["data"]
 
 
-def schedule_chore(client: TestClient, chore_id: int, next_executor_id: int):
+def schedule_chore(client: TestClient, chore_id: int, fixed_executor_id: int):
     r = client.put("/api/v1/chores/executions/next-executor", json={
         "chore_id": chore_id,
-        "next_executor_id": next_executor_id,
+        "fixed_executor_id": fixed_executor_id,
         "next_execution_date": "2026-05-01",
     })
     assert r.status_code == 200, f"Scheduling failed: {r.text}"
+
+
+def get_summary(client: TestClient) -> dict:
+    r = client.get("/api/v1/chores/summary")
+    assert r.status_code == 200, f"Summary fetch failed: {r.text}"
+    return r.json()["data"]["chores"]
 
 
 def mark_done(client: TestClient, chore_id: int, executor_id: int) -> dict:
@@ -86,7 +92,7 @@ def mark_done(client: TestClient, chore_id: int, executor_id: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Test 7.1 – same_person_next_time=True keeps next_executor_id unchanged
+# Test 7.1 – same_person_next_time=True keeps fixed executor unchanged
 # ---------------------------------------------------------------------------
 
 def test_same_person_executor_not_rotated():
@@ -108,19 +114,21 @@ def test_same_person_executor_not_rotated():
 
     # Mark as done by Alice
     result = mark_done(client, chore["id"], alice_id)
-    next_executor_id = result["updated_state"]["next_executor_id"]
+    fixed_executor_id = result["updated_state"]["fixed_executor_id"]
 
-    assert next_executor_id == alice_id, (
-        f"Expected next_executor_id to stay Alice ({alice_id}), got {next_executor_id}"
+    assert fixed_executor_id == alice_id, (
+        f"Expected fixed_executor_id to stay Alice ({alice_id}), got {fixed_executor_id}"
     )
-    print(f"  ✓ next_executor_id stayed Alice ({alice_id}) — not rotated to Bob ({bob_id})")
+    summary = {item["id"]: item for item in get_summary(client)}
+    assert summary[chore["id"]]["next_executor_id"] == alice_id
+    print(f"  ✓ fixed_executor_id stayed Alice ({alice_id}) and summary still returns Alice")
 
     db.close()
     db_path.unlink()
 
 
 # ---------------------------------------------------------------------------
-# Test 7.2 – same_person_next_time=False advances next_executor_id normally
+# Test 7.2 – same_person_next_time=False computes next executor normally
 # ---------------------------------------------------------------------------
 
 def test_normal_chore_executor_is_rotated():
@@ -135,19 +143,20 @@ def test_normal_chore_executor_is_rotated():
     alice_id = people["Alice"]
     bob_id = people["Bob"]
 
-    # Create a normal chore, scheduled for Alice
+    # Create a normal chore and record one execution by Alice
     chore = create_chore(client, "Wash dishes", same_person=False)
     assert chore["same_person_next_time"] is False
-    schedule_chore(client, chore["id"], alice_id)
 
-    # Mark as done by Alice — should rotate to Bob
+    # Mark as done by Alice — Bob should be next because Alice now has a higher score
     result = mark_done(client, chore["id"], alice_id)
-    next_executor_id = result["updated_state"]["next_executor_id"]
+    summary = {item["id"]: item for item in get_summary(client)}
+    next_executor_id = summary[chore["id"]]["next_executor_id"]
 
     assert next_executor_id == bob_id, (
         f"Expected next_executor_id to advance to Bob ({bob_id}), got {next_executor_id}"
     )
-    print(f"  ✓ next_executor_id advanced from Alice ({alice_id}) to Bob ({bob_id})")
+    assert result["updated_state"]["fixed_executor_id"] is None
+    print(f"  ✓ summary next_executor_id advanced from Alice ({alice_id}) to Bob ({bob_id})")
 
     db.close()
     db_path.unlink()

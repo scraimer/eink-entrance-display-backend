@@ -28,7 +28,7 @@ erDiagram
         INTEGER chore_id FK
         INTEGER last_executor_id FK
         TEXT last_execution_date
-        INTEGER next_executor_id FK
+        INTEGER fixed_executor_id FK
         TEXT next_execution_date
         TEXT created_at
         TEXT updated_at
@@ -65,7 +65,7 @@ erDiagram
     people ||--o{ executions : "executor_id"
     people ||--o{ rankings : "person_id"
     people ||--o{ chore_state : "last_executor_id"
-    people ||--o{ chore_state : "next_executor_id"
+    people ||--o{ chore_state : "fixed_executor_id"
     chores ||--|| chore_state : "chore_id"
     chores ||--o{ executions : "chore_id"
     chores ||--o{ rankings : "chore_id"
@@ -108,7 +108,7 @@ Tracks the current scheduling state for each chore. One row per chore (1:1).
 | `chore_id` | INTEGER | NOT NULL, UNIQUE, FK→chores(id) CASCADE | The chore |
 | `last_executor_id` | INTEGER | FK→people(id) SET NULL | Who last performed this chore |
 | `last_execution_date` | TEXT | | Date of last execution (YYYY-MM-DD) |
-| `next_executor_id` | INTEGER | FK→people(id) SET NULL | Who is scheduled next |
+| `fixed_executor_id` | INTEGER | FK→people(id) SET NULL | Who is always scheduled for this chore |
 | `next_execution_date` | TEXT | | Scheduled date for next execution (YYYY-MM-DD) |
 | `created_at` | TEXT | NOT NULL | UTC ISO-8601 timestamp |
 | `updated_at` | TEXT | NOT NULL | UTC ISO-8601 timestamp |
@@ -174,7 +174,7 @@ Cascades to: `chore_state`, `executions`, `rankings`
 
 ### Deleting a Person
 - Cascades to: `executions`, `rankings`
-- Sets to NULL in: `chore_state.last_executor_id`, `chore_state.next_executor_id`
+- Sets to NULL in: `chore_state.last_executor_id`, `chore_state.fixed_executor_id`
 
 ## Timestamps
 
