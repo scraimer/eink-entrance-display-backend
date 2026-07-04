@@ -21,11 +21,16 @@ from . import config, render
 _logger: logging.Logger = logging.getLogger()
 
 
+UNASSIGNED_ORDINAL = 10**9
+
+
 @dataclass
 class Chore:
     due: date
     name: str
     assignee: str
+    assignee_avatar: str
+    assignee_ordinal: int
     frequency_in_weeks: int
 
 
@@ -33,12 +38,6 @@ class Chore:
 class ChoreData:
     chores: List[Chore]
     error: Optional[str] = None
-
-
-@dataclass
-class Assignee:
-    name: str
-    avatar: str
 
 
 def get_chores_from_database() -> List["Chore"]:
@@ -57,13 +56,17 @@ def get_chores_from_database() -> List["Chore"]:
 
     summary = build_chores_summary(db)
 
-    # Build a person id→name lookup from the people table
-    people_by_id: Dict[int, str] = {}
+    # Build a person id→metadata lookup from the people table
+    people_by_id: Dict[int, Dict[str, Any]] = {}
     session = db.get_session()
     try:
         from .chores_db import Person as _Person
         for person in session.query(_Person).all():
-            people_by_id[person.id] = person.name
+            people_by_id[person.id] = {
+                "name": person.name,
+                "avatar": person.avatar,
+                "ordinal": person.ordinal,
+            }
     finally:
         session.close()
 
@@ -80,12 +83,22 @@ def get_chores_from_database() -> List["Chore"]:
                 due = date.today()
 
         next_executor_id = state.get("fixed_executor_id") or chore_data.get("next_executor_id")
-        assignee = people_by_id.get(next_executor_id, "") if next_executor_id else ""
+        assignee = ""
+        assignee_avatar = ""
+        assignee_ordinal = UNASSIGNED_ORDINAL
+        if next_executor_id:
+            person = people_by_id.get(next_executor_id)
+            if person:
+                assignee = person["name"]
+                assignee_avatar = person["avatar"]
+                assignee_ordinal = person["ordinal"]
 
         chores_list.append(Chore(
             due=due,
             name=chore_data.get("name", ""),
             assignee=assignee,
+            assignee_avatar=assignee_avatar,
+            assignee_ordinal=assignee_ordinal,
             frequency_in_weeks=chore_data.get("frequency_in_weeks", 1),
         ))
         _logger.debug(f"Added record #{len(chores_list)}")
@@ -118,29 +131,12 @@ def collect_data(now_utc: datetime) -> ChoreData:
     return ChoreData(chores=chores)
 
 
-def normalize_assigneed(raw_assignee: str) -> Optional[Assignee]:
-    first_name = raw_assignee.split(" ")[0].lower()
-    DEFAULT = "DEFAULT"
-    TABLE = {
-        "ariel": Assignee(name="Ariel", avatar="ariel.png"),
-        "asaf": Assignee(name="Asaf", avatar="asaf.png"),
-        "amalya": Assignee(name="Amalya", avatar="amalya.png"),
-        "alon": Assignee(name="Alon", avatar="alon.png"),
-        "aviv": Assignee(name="Aviv", avatar="aviv.png"),
-        DEFAULT: Assignee(name="Other", avatar="other.png"),
-    }
-    if first_name in TABLE:
-        return TABLE[first_name]
-    else:
-        return TABLE[DEFAULT]
-
-
 def render_chores(chores: List[Chore], now_utc: datetime, color: str) -> str:
     # Sort the chores:
     # - unassigned items are last
-    # - by assignee name
-    # - sort by how often (more often, i.e. lower between weeks is sooner)
-    chores.sort(key=lambda c: (not c.assignee, c.assignee, c.frequency_in_weeks))
+    # - by the assignee's database ordinal
+    # - sort by how often (more often, i.e. lower frequency_in_weeks is sooner)
+    chores.sort(key=lambda c: (not c.assignee, c.assignee_ordinal, c.frequency_in_weeks))
 
     chore_template = Template(
         textwrap.dedent(
@@ -165,10 +161,9 @@ def render_chores(chores: List[Chore], now_utc: datetime, color: str) -> str:
         extra_classes = ""
         avatar_img = ""
         if chore.assignee:
-            assignee = normalize_assigneed(chore.assignee)
             extra_classes += f" assigned"
-            if assignee and assignee.avatar:
-                avatar_url = f"file:///app/assets/avatars/joined/{assignee.avatar}"
+            if chore.assignee_avatar:
+                avatar_url = f"file:///app/assets/avatars/joined/{chore.assignee_avatar}"
                 avatar_url = render.image_extract_color_channel(
                     img_url=avatar_url, color=color
                 )
