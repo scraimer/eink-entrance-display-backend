@@ -170,6 +170,22 @@ class AuditLogEntry(Base):
     )
 
 
+class DatedChorePlan(Base):
+    """Persisted chore plan snapshot keyed by a target plan date."""
+
+    __tablename__ = "dated_chore_plans"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_date = Column(String, nullable=False, unique=True)  # ISO 8601 date format
+    plan_data = Column(Text, nullable=False)  # JSON payload
+    created_at = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)
+
+    __table_args__ = (
+        Index("ix_dated_chore_plans_plan_date", "plan_date"),
+    )
+
+
 # ============================================================================
 # Database Initialization
 # ============================================================================
@@ -264,6 +280,22 @@ class ChoresDatabase:
                 con.execute("ALTER TABLE chore_state_new RENAME TO chore_state")
                 con.commit()
                 con.execute("PRAGMA foreign_keys=ON")
+
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS dated_chore_plans (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    plan_date TEXT NOT NULL UNIQUE,
+                    plan_data TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS ix_dated_chore_plans_plan_date ON dated_chore_plans(plan_date)"
+            )
+            con.commit()
         finally:
             con.close()
 
@@ -390,7 +422,10 @@ SCORE_EXECUTION_WINDOW_DAYS = 730  # 2 years
 SCORE_RECENCY_CAP_DAYS = 365
 
 
-def compute_chore_scores(session: Session) -> list[tuple[int, int, int]]:
+def compute_chore_scores(
+    session: Session,
+    as_of_date_iso: Optional[str] = None,
+) -> list[tuple[int, int, int]]:
     """Compute weighted scores for every in-rotation person and chore pair.
 
     Only executions within the last SCORE_EXECUTION_WINDOW_DAYS days are counted.
@@ -399,6 +434,8 @@ def compute_chore_scores(session: Session) -> list[tuple[int, int, int]]:
     Returns:
         List of (person_id, chore_id, score) tuples, one row per eligible pair.
     """
+    effective_as_of = as_of_date_iso or utc_today_iso()
+
     query = text(
         f"""
         SELECT
@@ -407,7 +444,10 @@ def compute_chore_scores(session: Session) -> list[tuple[int, int, int]]:
             (
                 COALESCE(COUNT(e.id), 0) * 1000
                 - COALESCE(
-                    MIN(CAST(julianday('now') - julianday(MAX(e.execution_date)) AS INTEGER), {SCORE_RECENCY_CAP_DAYS}),
+                    MIN(
+                        CAST(julianday(:as_of_date) - julianday(MAX(e.execution_date)) AS INTEGER),
+                        {SCORE_RECENCY_CAP_DAYS}
+                    ),
                     {SCORE_RECENCY_CAP_DAYS}
                 )
             ) AS score
@@ -416,13 +456,13 @@ def compute_chore_scores(session: Session) -> list[tuple[int, int, int]]:
         LEFT JOIN executions AS e
             ON e.executor_id = p.id
            AND e.chore_id = c.id
-           AND julianday('now') - julianday(e.execution_date) <= {SCORE_EXECUTION_WINDOW_DAYS}
+           AND julianday(:as_of_date) - julianday(e.execution_date) <= {SCORE_EXECUTION_WINDOW_DAYS}
         WHERE p.in_rotation = 1
         GROUP BY p.id, c.id
         ORDER BY c.id, score ASC, p.ordinal ASC, p.id ASC
         """
     )
-    rows = session.execute(query).all()
+    rows = session.execute(query, {"as_of_date": effective_as_of}).all()
     return [(int(row.person_id), int(row.chore_id), int(row.score)) for row in rows]
 
 

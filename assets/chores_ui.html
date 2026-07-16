@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chores</title>
+<title>Chore Plan</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
@@ -75,6 +75,7 @@
   .badge-red { background: #fed7d7; color: #9b2c2c; }
   .badge-grey { background: #e2e8f0; color: #4a5568; }
   .badge-purple { background: #e9d8fd; color: #553c9a; }
+  .badge-black { background: #1a202c; color: #fff; }
 
   /* ---------- buttons ---------- */
   .btn {
@@ -179,9 +180,9 @@
 <body>
 
 <header>
-  <h1>🧹 Chores</h1>
+  <h1>🧹 Chore Plan</h1>
   <nav>
-    <button id="tab-btn-chores"    class="active" onclick="switchTab('chores')">Chores</button>
+    <button id="tab-btn-chores"    class="active" onclick="switchTab('chores')">Chore Plan</button>
     <button id="tab-btn-management"               onclick="switchTab('management')">Management</button>
     <button id="tab-btn-audit"                    onclick="switchTab('audit')">Audit Log</button>
   </nav>
@@ -192,11 +193,30 @@
   <div id="tab-chores" class="tab-panel active">
     <div class="card">
       <div class="card-header">
-        Chores
+        <span>Chore Plan — <span id="selected-plan-date-label">—</span></span>
         <button class="btn btn-ghost btn-sm" onclick="loadChores()">↻ Refresh</button>
+      </div>
+      <div class="bulk-toolbar" style="justify-content:flex-start;gap:0.75rem">
+        <div class="form-group">
+          <label for="chore-plan-date-input">Plan Date</label>
+          <input type="date" id="chore-plan-date-input">
+        </div>
+        <div class="form-group">
+          <button class="btn btn-primary btn-sm" onclick="applyChorePlanDate()">Load Plan Date</button>
+          <button class="btn btn-ghost btn-sm" onclick="selectTodayPlanDate()" style="margin-top:0.25rem">Today</button>
+          <button class="btn btn-ghost btn-sm" onclick="selectTomorrowPlanDate()" style="margin-top:0.25rem">Tomorrow</button>
+        </div>
       </div>
       <div id="chores-error" class="error-banner"></div>
       <div id="chores-success" class="success-banner"></div>
+      <div id="bulk-refresh-dialog" class="card" style="display:none;margin:0.75rem 1rem;padding:0.75rem;border:1px solid #cbd5e0;box-shadow:none">
+        <div id="bulk-refresh-dialog-text" style="margin-bottom:0.5rem;font-size:0.9rem;color:#2d3748"></div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="handleBulkRefreshChoice('today')">Today</button>
+          <button class="btn btn-primary btn-sm" onclick="handleBulkRefreshChoice('tomorrow')">Tomorrow</button>
+          <button class="btn btn-ghost btn-sm" onclick="handleBulkRefreshChoice('none')">None</button>
+        </div>
+      </div>
       <div class="bulk-toolbar">
         <div class="form-group">
           <label for="bulk-next-date">Bulk Next Due Date</label>
@@ -290,6 +310,22 @@
           <button class="btn btn-primary btn-sm" onclick="showAddChoreForm()">+ Add Chore</button>
         </div>
         <div id="mgmt-chores-error" class="error-banner"></div>
+        <div class="bulk-toolbar" style="justify-content:space-between;align-items:flex-end">
+          <div class="form-row" style="margin:0">
+            <div class="form-group">
+              <label for="plan-date-input">Selected Plan Date</label>
+              <input type="date" id="plan-date-input">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-ghost btn-sm" onclick="selectTodayPlanDate()">Today</button>
+              <button class="btn btn-ghost btn-sm" onclick="selectTomorrowPlanDate()" style="margin-top:0.25rem">Tomorrow</button>
+            </div>
+            <div class="form-group">
+              <button class="btn btn-primary btn-sm" onclick="refreshSelectedPlanDate()">Refresh Selected Plan</button>
+            </div>
+          </div>
+          <div id="plan-action-success" class="success-banner" style="margin:0"></div>
+        </div>
         <table>
           <thead>
             <tr><th>Name</th><th>Frequency (weeks)</th><th></th></tr>
@@ -360,9 +396,10 @@ let summary = [];     // from /summary endpoint (chores + state + rankings)
 let peopleMap = {};   // id -> {name, ordinal}
 let choreStates = {}; // chore_id -> ChoreStateResponse
 let selectedChoreIds = new Set();
+let selectedPlanDate = getTodayIsoDate();
+let pendingBulkRefresh = null;
 
 const BULK_MAX_SELECTION = 10;
-const DUE_SOON_REBALANCE_MAX_ITERATIONS = 12;
 
 const API = '/api/v1/chores';
 
@@ -424,152 +461,71 @@ function getDueDayDiff(dateStr) {
   return Math.floor((due - today) / 86400000);
 }
 
-function buildDueSoonCounts(chores, rotationPersonIds) {
-  const counts = new Map(rotationPersonIds.map(id => [id, 0]));
-  chores.forEach(chore => {
-    const nextId = chore.next_executor_id;
-    if (counts.has(nextId)) {
-      counts.set(nextId, (counts.get(nextId) || 0) + 1);
-    }
-  });
-  return counts;
+function getTodayIsoDate() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function minMaxCount(counts, rotationPersonIds) {
-  let minCount = Infinity;
-  let maxCount = -Infinity;
-  let minPersonId = null;
-  let maxPersonId = null;
-
-  rotationPersonIds.forEach(id => {
-    const count = counts.get(id) || 0;
-    if (count < minCount) {
-      minCount = count;
-      minPersonId = id;
-    }
-    if (count > maxCount) {
-      maxCount = count;
-      maxPersonId = id;
-    }
-  });
-
-  return { minCount, maxCount, minPersonId, maxPersonId };
+function getTomorrowIsoDate() {
+  const now = new Date();
+  now.setDate(now.getDate() + 1);
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function rebalanceDueSoonAssignments(chores, peopleList) {
-  const rotationPersonIds = (peopleList || [])
-    .filter(p => p.in_rotation)
-    .map(p => p.id);
+function summaryPath() {
+  return '/summary?plan_date=' + encodeURIComponent(selectedPlanDate);
+}
 
-  if (rotationPersonIds.length < 2) {
-    return { warning: null };
+function updateSelectedPlanDateUI() {
+  const label = document.getElementById('selected-plan-date-label');
+  if (label) label.textContent = selectedPlanDate || '—';
+  const managementInput = document.getElementById('plan-date-input');
+  if (managementInput) managementInput.value = selectedPlanDate || '';
+  const choresInput = document.getElementById('chore-plan-date-input');
+  if (choresInput) choresInput.value = selectedPlanDate || '';
+}
+
+function selectTodayPlanDate() {
+  selectedPlanDate = getTodayIsoDate();
+  updateSelectedPlanDateUI();
+  loadChores();
+  loadMgmtChores();
+}
+
+function selectTomorrowPlanDate() {
+  selectedPlanDate = getTomorrowIsoDate();
+  updateSelectedPlanDateUI();
+  loadChores();
+  loadMgmtChores();
+}
+
+function applyChorePlanDate() {
+  const input = document.getElementById('chore-plan-date-input');
+  selectedPlanDate = (input && input.value) ? input.value : getTodayIsoDate();
+  updateSelectedPlanDateUI();
+  loadChores();
+  loadMgmtChores();
+}
+
+async function refreshSelectedPlanDate() {
+  clearError('mgmt-chores-error');
+  clearSuccess('plan-action-success');
+  const input = document.getElementById('plan-date-input');
+  if (input && input.value) selectedPlanDate = input.value;
+  updateSelectedPlanDateUI();
+  try {
+    await api('POST', '/plans/generate', { plan_date: selectedPlanDate });
+    await Promise.all([loadChores(), loadMgmtChores()]);
+    showSuccess('plan-action-success', `Plan refreshed for ${selectedPlanDate}`);
+  } catch (e) {
+    showError('mgmt-chores-error', e.message);
   }
-
-  const dueSoonChores = chores.filter(chore => {
-    const diff = getDueDayDiff(chore.state?.next_execution_date);
-    return diff === 0 || diff === 1;
-  });
-
-  if (dueSoonChores.length === 0) {
-    return { warning: null };
-  }
-
-  const adjustable = dueSoonChores.filter(chore => (
-    !chore.same_person_next_time &&
-    Array.isArray(chore.person_scores) &&
-    chore.person_scores.length > 1
-  ));
-
-  const scoreOrderByChore = new Map();
-  const scoreIndexByChore = new Map();
-  adjustable.forEach(chore => {
-    const order = chore.person_scores.map(s => s.person_id);
-    scoreOrderByChore.set(chore.id, order);
-    const currentIdx = Math.max(0, order.indexOf(chore.next_executor_id));
-    scoreIndexByChore.set(chore.id, currentIdx);
-  });
-
-  let iterations = 0;
-  while (iterations < DUE_SOON_REBALANCE_MAX_ITERATIONS) {
-    const counts = buildDueSoonCounts(dueSoonChores, rotationPersonIds);
-    const { minCount, maxCount, minPersonId, maxPersonId } = minMaxCount(counts, rotationPersonIds);
-
-    if (maxCount - minCount <= 1) {
-      return { warning: null };
-    }
-
-    let bestMove = null;
-
-    adjustable.forEach(chore => {
-      if (chore.next_executor_id !== maxPersonId) {
-        return;
-      }
-
-      const order = scoreOrderByChore.get(chore.id) || [];
-      const currentIdx = scoreIndexByChore.get(chore.id) ?? -1;
-      const nextIdx = currentIdx + 1;
-      if (nextIdx >= order.length) {
-        return;
-      }
-
-      const nextPersonId = order[nextIdx];
-      if (!rotationPersonIds.includes(nextPersonId)) {
-        return;
-      }
-
-      const newCounts = new Map(counts);
-      newCounts.set(maxPersonId, (newCounts.get(maxPersonId) || 0) - 1);
-      newCounts.set(nextPersonId, (newCounts.get(nextPersonId) || 0) + 1);
-      const nextMinMax = minMaxCount(newCounts, rotationPersonIds);
-      const newGap = nextMinMax.maxCount - nextMinMax.minCount;
-
-      const move = {
-        chore,
-        nextIdx,
-        nextPersonId,
-        newGap,
-        helpsLeastLoaded: nextPersonId === minPersonId,
-      };
-
-      if (!bestMove) {
-        bestMove = move;
-        return;
-      }
-
-      if (move.newGap < bestMove.newGap) {
-        bestMove = move;
-        return;
-      }
-
-      if (
-        move.newGap === bestMove.newGap &&
-        move.helpsLeastLoaded &&
-        !bestMove.helpsLeastLoaded
-      ) {
-        bestMove = move;
-      }
-    });
-
-    if (!bestMove) {
-      return {
-        warning: `Fairness warning: could not rebalance due today/tomorrow chores using score order (stopped after ${iterations} iterations).`,
-      };
-    }
-
-    bestMove.chore.next_executor_id = bestMove.nextPersonId;
-    scoreIndexByChore.set(bestMove.chore.id, bestMove.nextIdx);
-    iterations += 1;
-  }
-
-  const counts = buildDueSoonCounts(dueSoonChores, rotationPersonIds);
-  const { minCount, maxCount } = minMaxCount(counts, rotationPersonIds);
-  if (maxCount - minCount > 1) {
-    return {
-      warning: `Fairness warning: could not fully rebalance due today/tomorrow chores within ${DUE_SOON_REBALANCE_MAX_ITERATIONS} iterations.`,
-    };
-  }
-
-  return { warning: null };
 }
 
 function dueBadge(dateStr) {
@@ -617,21 +573,16 @@ async function loadChores() {
   tbody.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
   try {
     const [summaryRes, peopleRes] = await Promise.all([
-      api('GET', '/summary'),
+      api('GET', summaryPath()),
       api('GET', '/people'),
     ]);
     people = peopleRes.data || [];
     summary = summaryRes.data?.chores || [];
     peopleMap = Object.fromEntries(people.map(p => [p.id, p]));
-    const rebalanceResult = rebalanceDueSoonAssignments(summary, people);
-    if (rebalanceResult.warning) {
-      showError('chores-error', rebalanceResult.warning);
-    }
     const visibleIds = new Set(summary.map(chore => chore.id));
     selectedChoreIds = new Set([...selectedChoreIds].filter(choreId => visibleIds.has(choreId)));
 
-    // Sort: primary by next_execution_date asc (null last), secondary by next executor ordinal asc
-    summary.sort((a, b) => {
+    const compareByDateAndOrdinal = (a, b) => {
       const da = a.state?.next_execution_date;
       const db = b.state?.next_execution_date;
       if (da && db) {
@@ -642,7 +593,7 @@ async function loadChores() {
       const oa = peopleMap[a.next_executor_id]?.ordinal ?? Infinity;
       const ob = peopleMap[b.next_executor_id]?.ordinal ?? Infinity;
       return oa - ob;
-    });
+    };
 
     if (summary.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" class="empty">No chores yet. Add some in Management.</td></tr>';
@@ -650,15 +601,29 @@ async function loadChores() {
       return;
     }
 
-    tbody.innerHTML = summary.map((chore, i) => {
+    const isDueTodayOrTomorrow = (chore) => {
+      const diff = getDueDayDiff(chore.state?.next_execution_date);
+      return diff === 0 || diff === 1;
+    };
+    const dueSoon = summary.filter(isDueTodayOrTomorrow);
+    const notDueToday = summary.filter(chore => !isDueTodayOrTomorrow(chore));
+    const dueSoonOpen = dueSoon.filter(chore => !chore.is_done).sort(compareByDateAndOrdinal);
+    const dueSoonDone = dueSoon.filter(chore => chore.is_done).sort(compareByDateAndOrdinal);
+    const firstHalf = [...dueSoonOpen, ...dueSoonDone];
+    const secondHalf = notDueToday.sort(compareByDateAndOrdinal);
+
+    let rowIndex = 0;
+    const renderRows = (items) => items.map((chore) => {
+      const i = rowIndex++;
       const state = chore.state || {};
       const nextPerson = peopleMap[chore.next_executor_id];
       const nextName = nextPerson ? nextPerson.name : '—';
       const samePersonBadge = chore.same_person_next_time
         ? ' <span class="badge badge-purple" title="Same person next time">📌 Always same</span>'
         : '';
-      const scoreCount = Array.isArray(chore.person_scores) ? chore.person_scores.length : 0;
       const checked = selectedChoreIds.has(chore.id) ? 'checked' : '';
+      const doneBadge = chore.is_done ? '<span class="badge badge-black">Done</span>' : '';
+      const unscheduledBadge = chore.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>';
       return `
         <tr id="chore-row-${i}" onclick="toggleChoreDetail(${i})" data-idx="${i}">
           <td class="bulk-select-cell">
@@ -669,12 +634,23 @@ async function loadChores() {
           <td><strong>${esc(chore.name)}</strong>${samePersonBadge}</td>
           <td>${fmtDate(state.next_execution_date)} ${dueBadge(state.next_execution_date)}</td>
           <td>${esc(nextName)}</td>
-          <td>${chore.next_executor_id ? '' : '<span class="badge badge-grey">Unscheduled</span>'}${samePersonBadge && scoreCount ? '' : ''}</td>
+          <td>${doneBadge}${doneBadge && unscheduledBadge ? ' ' : ''}${unscheduledBadge}</td>
         </tr>
         <tr id="chore-detail-${i}" class="detail-row" style="display:none">
           <td colspan="5">${choreDetailHTML(chore, state)}</td>
         </tr>`;
     }).join('');
+
+    const firstHeader = '<tr><td colspan="5" style="background:#f7fafc;font-weight:600">Due today or tomorrow</td></tr>';
+    const secondHeader = '<tr><td colspan="5" style="background:#f7fafc;font-weight:600">Not due today</td></tr>';
+    const firstBody = firstHalf.length
+      ? renderRows(firstHalf)
+      : '<tr><td colspan="5" class="empty">No chores due today or tomorrow.</td></tr>';
+    const secondBody = secondHalf.length
+      ? renderRows(secondHalf)
+      : '<tr><td colspan="5" class="empty">No additional chores.</td></tr>';
+
+    tbody.innerHTML = `${firstHeader}${firstBody}${secondHeader}${secondBody}`;
     updateBulkControls();
   } catch(e) {
     showError('chores-error', e.message);
@@ -790,21 +766,62 @@ async function applyBulkNextDueDate() {
       chore_ids: choreIds,
       next_execution_date: nextExecutionDate,
     });
+    pendingBulkRefresh = {
+      updatedCount: res.data?.updated_count ?? choreIds.length,
+      nextExecutionDate,
+    };
     selectedChoreIds.clear();
     await loadChores();
-    showSuccess(
-      'chores-success',
-      `Updated ${res.data?.updated_count ?? choreIds.length} chores to due date ${nextExecutionDate}.`
-    );
+    showBulkRefreshDialog();
   } catch(e) {
     showError('chores-error', `Bulk update failed. No chores were updated. ${e.message}`);
+  }
+}
+
+function showBulkRefreshDialog() {
+  const dialog = document.getElementById('bulk-refresh-dialog');
+  const text = document.getElementById('bulk-refresh-dialog-text');
+  if (!dialog || !text || !pendingBulkRefresh) return;
+  text.textContent = `Updated ${pendingBulkRefresh.updatedCount} chores to due date ${pendingBulkRefresh.nextExecutionDate}. Refresh which plan now?`;
+  dialog.style.display = '';
+}
+
+function hideBulkRefreshDialog() {
+  const dialog = document.getElementById('bulk-refresh-dialog');
+  if (dialog) dialog.style.display = 'none';
+}
+
+async function handleBulkRefreshChoice(choice) {
+  clearError('chores-error');
+  clearSuccess('chores-success');
+  hideBulkRefreshDialog();
+  const bulkUpdate = pendingBulkRefresh;
+  pendingBulkRefresh = null;
+  if (!bulkUpdate) return;
+
+  try {
+    if (choice === 'today' || choice === 'tomorrow') {
+      await api('POST', '/plans/generate', { plan_date: choice });
+      await Promise.all([loadChores(), loadMgmtChores()]);
+      showSuccess(
+        'chores-success',
+        `Updated ${bulkUpdate.updatedCount} chores to due date ${bulkUpdate.nextExecutionDate}. Refreshed ${choice} plan.`
+      );
+      return;
+    }
+    showSuccess(
+      'chores-success',
+      `Updated ${bulkUpdate.updatedCount} chores to due date ${bulkUpdate.nextExecutionDate}.`
+    );
+  } catch (e) {
+    showError('chores-error', e.message);
   }
 }
 
 function choreDetailHTML(chore, state) {
   const lastPerson = peopleMap[state.last_executor_id];
   const nextPerson = peopleMap[chore.next_executor_id];
-  const canMarkDone = !!chore.next_executor_id;
+  const canMarkDone = !!chore.next_executor_id && !chore.is_done;
   const scoreRows = (chore.person_scores || []).map(score => {
     const person = peopleMap[score.person_id];
     const isNext = score.person_id === chore.next_executor_id;
@@ -824,6 +841,7 @@ function choreDetailHTML(chore, state) {
       <dt>Next Date</dt><dd>${fmtDate(state.next_execution_date)}</dd>
       <dt>Frequency</dt><dd>Every ${chore.frequency_in_weeks} week${chore.frequency_in_weeks !== 1 ? 's' : ''}</dd>
     </dl>
+    ${chore.is_done ? `<div style="margin:0.4rem 0 0.6rem"><span class="badge badge-black">Done</span></div>` : ''}
     ${chore.same_person_next_time ? `<div style="margin:0.5rem 0 0.75rem"><span class="badge badge-purple">Fixed executor</span></div>` : `<div class="rankings-grid" style="margin-top:0.25rem">${scoreRows}</div>`}
     <div id="done-error-${chore.id}" class="error-banner"></div>
     <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
@@ -862,9 +880,18 @@ function toggleChoreDetail(i) {
 
 async function markDone(choreId, executorId) {
   clearError('done-error-' + choreId);
+  clearSuccess('chores-success');
   try {
-    await api('POST', '/executions', { chore_id: choreId, executor_id: executorId });
+    await api('POST', '/executions', {
+      chore_id: choreId,
+      executor_id: executorId,
+      plan_date: selectedPlanDate,
+    });
     await loadChores();
+    showSuccess(
+      'chores-success',
+      `Execution recorded and hidden from plan ${selectedPlanDate}.`
+    );
   } catch(e) {
     showError('done-error-' + choreId, e.message);
   }
@@ -887,9 +914,18 @@ async function confirmDoneByOther(choreId) {
   const executorId = parseInt(select.value);
   if (!executorId) return;
   clearError('done-error-' + choreId);
+  clearSuccess('chores-success');
   try {
-    await api('POST', '/executions', { chore_id: choreId, executor_id: executorId });
+    await api('POST', '/executions', {
+      chore_id: choreId,
+      executor_id: executorId,
+      plan_date: selectedPlanDate,
+    });
     await loadChores();
+    showSuccess(
+      'chores-success',
+      `Execution recorded and hidden from plan ${selectedPlanDate}.`
+    );
   } catch(e) {
     showError('done-error-' + choreId, e.message);
   }
@@ -1107,18 +1143,15 @@ async function loadMgmtChores() {
   const tbody = document.getElementById('mgmt-chores-tbody');
   tbody.innerHTML = '<tr><td colspan="3" class="empty">Loading…</td></tr>';
   try {
-    const [choreRes, summaryRes] = await Promise.all([
-      api('GET', '/chores'),
-      api('GET', '/summary'),
-    ]);
-    allChores = (choreRes.data || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    const summaryRes = await api('GET', summaryPath());
     const summaryChores = summaryRes.data?.chores || [];
     choreStates = Object.fromEntries(summaryChores.map(c => [c.id, c.state || {}]));
-    if (allChores.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="empty">No chores yet.</td></tr>';
+    const visibleChores = summaryChores.slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (visibleChores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty">No chores in this plan date.</td></tr>';
       return;
     }
-    tbody.innerHTML = allChores.map(c => choreRowHTML(c)).join('');
+    tbody.innerHTML = visibleChores.map(c => choreRowHTML(c)).join('');
   } catch(e) {
     showError('mgmt-chores-error', e.message);
     tbody.innerHTML = '';
@@ -1358,6 +1391,26 @@ function esc(s) {
 // Bootstrap
 // ============================================================
 (function init() {
+  updateSelectedPlanDateUI();
+  const planDateInput = document.getElementById('plan-date-input');
+  if (planDateInput) {
+    planDateInput.value = selectedPlanDate;
+    planDateInput.addEventListener('change', () => {
+      selectedPlanDate = planDateInput.value || getTodayIsoDate();
+      updateSelectedPlanDateUI();
+      loadChores();
+      loadMgmtChores();
+    });
+  }
+  const choresPlanDateInput = document.getElementById('chore-plan-date-input');
+  if (choresPlanDateInput) {
+    choresPlanDateInput.value = selectedPlanDate;
+    choresPlanDateInput.addEventListener('change', () => {
+      selectedPlanDate = choresPlanDateInput.value || getTodayIsoDate();
+      updateSelectedPlanDateUI();
+    });
+  }
+
   const hash = location.hash.replace('#', '') || 'chores';
   const validTab = ['chores', 'management', 'audit'].includes(hash) ? hash : 'chores';
   switchTab(validTab);

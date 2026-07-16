@@ -11,6 +11,7 @@ Provides REST endpoints for:
 """
 
 from typing import List, Optional, Dict, Any
+import json
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, validator
@@ -24,6 +25,7 @@ from .chores_db import (
     Execution,
     Ranking,
     AuditLogEntry,
+    DatedChorePlan,
     PersonData,
     ChoreData,
     ChoreStateData,
@@ -106,6 +108,10 @@ class ExecutionRequest(BaseModel):
 
     chore_id: int = Field(..., ge=1)
     executor_id: int = Field(..., ge=1)
+    plan_date: Optional[str] = Field(
+        None,
+        description="Plan date to update after execution (YYYY-MM-DD, today, tomorrow).",
+    )
 
 
 class ExecutionResponse(BaseModel):
@@ -156,6 +162,15 @@ class BulkNextDueDateResponse(BaseModel):
     chore_ids: List[int]
     next_execution_date: str
     updated_count: int
+
+
+class PlanGenerationRequest(BaseModel):
+    """Request body for generating a persisted chore plan."""
+
+    plan_date: Optional[str] = Field(
+        None,
+        description="Target date in YYYY-MM-DD format, or shortcuts: today/tomorrow.",
+    )
 
 
 class RankingRequest(BaseModel):
@@ -226,8 +241,243 @@ class ChoresSummaryResponse(BaseModel):
 # ============================================================================
 
 
-def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
-    """Get all chores with current state and rankings, queried directly from the database.
+def _resolve_plan_date(plan_date: Optional[str]) -> str:
+    if not plan_date or plan_date == "today":
+        return date.today().isoformat()
+    if plan_date == "tomorrow":
+        return (date.today() + timedelta(days=1)).isoformat()
+    try:
+        return date.fromisoformat(plan_date).isoformat()
+    except ValueError as ex:
+        raise HTTPException(status_code=400, detail="plan_date must be YYYY-MM-DD, today, or tomorrow") from ex
+
+
+def _build_plan_snapshot(
+    session: Session,
+    target_plan_date: str,
+    done_chore_ids: Optional[set[int]] = None,
+) -> dict[str, Any]:
+    """Build a full chores plan snapshot for a specific date."""
+    done_ids = done_chore_ids or set()
+    scores_by_chore: dict[int, list[dict[str, Any]]] = {}
+    for person_id, chore_id, score in compute_chore_scores(session, as_of_date_iso=target_plan_date):
+        scores_by_chore.setdefault(chore_id, []).append({"person_id": person_id, "score": score})
+
+    chores = (
+        session.query(Chore)
+        .options(
+            joinedload(Chore.state),
+            subqueryload(Chore.rankings),
+        )
+        .all()
+    )
+
+    chores_data: list[dict[str, Any]] = []
+    for chore in chores:
+        state = chore.state
+        person_scores = scores_by_chore.get(chore.id, [])
+        next_executor_id = (
+            state.fixed_executor_id if chore.same_person_next_time and state else
+            (person_scores[0]["person_id"] if person_scores else None)
+        )
+        chores_data.append({
+            "id": chore.id,
+            "name": chore.name,
+            "frequency_in_weeks": chore.frequency_in_weeks,
+            "same_person_next_time": chore.same_person_next_time,
+            "plan_date": target_plan_date,
+            "is_done": chore.id in done_ids,
+            "state": {
+                "id": state.id,
+                "chore_id": state.chore_id,
+                "last_executor_id": state.last_executor_id,
+                "last_execution_date": state.last_execution_date,
+                "fixed_executor_id": state.fixed_executor_id,
+                "next_execution_date": state.next_execution_date,
+                "created_at": state.created_at,
+                "updated_at": state.updated_at,
+            } if state else None,
+            "next_executor_id": next_executor_id,
+            "person_scores": person_scores if not chore.same_person_next_time else [],
+            "rankings": (
+                []
+                if chore.same_person_next_time
+                else [{"person_id": r.person_id, "rating": r.rating} for r in chore.rankings]
+            ),
+        })
+
+    _rebalance_due_soon_assignments(chores_data, target_plan_date)
+
+    return {
+        "plan_date": target_plan_date,
+        "done_chore_ids": sorted(done_ids),
+        "chores": chores_data,
+    }
+
+
+def _rebalance_due_soon_assignments(
+    chores_data: list[dict[str, Any]],
+    target_plan_date: str,
+) -> None:
+    """Rebalance due-soon chore assignments so load gap is at most one."""
+    try:
+        plan_day = date.fromisoformat(target_plan_date)
+    except ValueError:
+        return
+    tomorrow = plan_day + timedelta(days=1)
+
+    rotation_ids = sorted({
+        int(score["person_id"])
+        for chore in chores_data
+        for score in (chore.get("person_scores") or [])
+    })
+    if len(rotation_ids) < 2:
+        return
+
+    def is_due_soon(chore: dict[str, Any]) -> bool:
+        due = (chore.get("state") or {}).get("next_execution_date")
+        if not due:
+            return False
+        try:
+            due_day = date.fromisoformat(due)
+        except ValueError:
+            return False
+        return due_day in (plan_day, tomorrow)
+
+    def count_assignments() -> dict[int, int]:
+        counts = {person_id: 0 for person_id in rotation_ids}
+        for chore in chores_data:
+            if chore.get("is_done"):
+                continue
+            if not is_due_soon(chore):
+                continue
+            assignee = chore.get("next_executor_id")
+            if assignee in counts:
+                counts[int(assignee)] += 1
+        return counts
+
+    max_iterations = max(1, len(chores_data) * 4)
+    for _ in range(max_iterations):
+        counts = count_assignments()
+        min_person = min(rotation_ids, key=lambda pid: (counts[pid], pid))
+        max_person = max(rotation_ids, key=lambda pid: (counts[pid], pid))
+        if counts[max_person] - counts[min_person] <= 1:
+            return
+
+        candidates: list[tuple[int, int, dict[str, Any]]] = []
+        for chore in chores_data:
+            if chore.get("is_done"):
+                continue
+            if chore.get("same_person_next_time"):
+                continue
+            if chore.get("next_executor_id") != max_person:
+                continue
+            if not is_due_soon(chore):
+                continue
+
+            person_scores = chore.get("person_scores") or []
+            min_score_entry = next(
+                (item for item in person_scores if int(item["person_id"]) == min_person),
+                None,
+            )
+            if min_score_entry is None:
+                continue
+            candidates.append((int(min_score_entry["score"]), int(chore["id"]), chore))
+
+        if not candidates:
+            return
+
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        _, _, chosen_chore = candidates[0]
+        chosen_chore["next_executor_id"] = min_person
+
+
+def generate_and_store_plan(
+    db: ChoresDatabase,
+    requested_plan_date: Optional[str] = None,
+) -> dict[str, Any]:
+    """Generate and persist a dated chore plan snapshot."""
+    plan_date = _resolve_plan_date(requested_plan_date)
+    session = db.get_session()
+    try:
+        row = session.query(DatedChorePlan).filter(DatedChorePlan.plan_date == plan_date).first()
+        existing_done_ids: set[int] = set()
+        if row is not None:
+            try:
+                existing_payload = json.loads(row.plan_data)
+                existing_done_ids = {int(item) for item in existing_payload.get("done_chore_ids", [])}
+            except (TypeError, ValueError):
+                existing_done_ids = set()
+
+        snapshot = _build_plan_snapshot(
+            session,
+            target_plan_date=plan_date,
+            done_chore_ids=existing_done_ids,
+        )
+        now = utc_now_iso()
+        if row is None:
+            row = DatedChorePlan(
+                plan_date=plan_date,
+                plan_data=json.dumps(snapshot),
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(row)
+        else:
+            row.plan_data = json.dumps(snapshot)
+            row.updated_at = now
+        session.commit()
+        return snapshot
+    finally:
+        session.close()
+
+
+def _hide_chore_from_plan_snapshot(
+    session: Session,
+    plan_date: str,
+    chore_id: int,
+) -> None:
+    """Mark a completed chore as done in the persisted plan snapshot for a specific date."""
+    plan_row = session.query(DatedChorePlan).filter(DatedChorePlan.plan_date == plan_date).first()
+    if plan_row is None:
+        snapshot = _build_plan_snapshot(session, target_plan_date=plan_date, done_chore_ids={chore_id})
+        plan_row = DatedChorePlan(
+            plan_date=plan_date,
+            plan_data=json.dumps(snapshot),
+            created_at=utc_now_iso(),
+            updated_at=utc_now_iso(),
+        )
+        session.add(plan_row)
+        session.flush()
+
+    payload = json.loads(plan_row.plan_data)
+    done_ids = {int(item) for item in payload.get("done_chore_ids", [])}
+    done_ids.add(chore_id)
+    payload["done_chore_ids"] = sorted(done_ids)
+    chores = payload.get("chores", [])
+    for item in chores:
+        item_id = int(item.get("id", -1))
+        item["is_done"] = item_id in done_ids
+    plan_row.plan_data = json.dumps(payload)
+    plan_row.updated_at = utc_now_iso()
+
+
+def seed_default_chore_plans(db: ChoresDatabase) -> None:
+    """Ensure startup has persisted plan snapshots for today and tomorrow."""
+    generate_and_store_plan(db, "today")
+    generate_and_store_plan(db, "tomorrow")
+
+
+def refresh_tomorrow_chore_plan(db: ChoresDatabase) -> None:
+    """Refresh the tomorrow plan snapshot (scheduler target)."""
+    generate_and_store_plan(db, "tomorrow")
+
+
+def build_chores_summary(
+    db: ChoresDatabase,
+    plan_date: Optional[str] = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """Get all chores with current state and rankings for a persisted plan date.
 
     Args:
         db: ChoresDatabase instance to query
@@ -235,62 +485,29 @@ def build_chores_summary(db: ChoresDatabase) -> dict[str, list[dict[str, Any]]]:
     Returns:
         Dict with a "chores" key containing a list of chore dicts with state and rankings.
     """
+    effective_plan_date = _resolve_plan_date(plan_date)
     session = db.get_session()
     try:
-        people = (
-            session.query(Person)
-            .filter(Person.in_rotation == True)  # noqa: E712
-            .order_by(Person.ordinal)
-            .all()
-        )
-
-        scores_by_chore: dict[int, list[dict[str, Any]]] = {}
-        for person_id, chore_id, score in compute_chore_scores(session):
-            scores_by_chore.setdefault(chore_id, []).append({"person_id": person_id, "score": score})
-
-        chores = (
-            session.query(Chore)
-            .options(
-                joinedload(Chore.state),
-                subqueryload(Chore.rankings),
-            )
-            .all()
-        )
-
-        chores_data = []
-        for chore in chores:
-            state = chore.state
-            person_scores = scores_by_chore.get(chore.id, [])
-            next_executor_id = (
-                state.fixed_executor_id if chore.same_person_next_time and state else
-                (person_scores[0]["person_id"] if person_scores else None)
-            )
-            chores_data.append({
-                "id": chore.id,
-                "name": chore.name,
-                "frequency_in_weeks": chore.frequency_in_weeks,
-                "same_person_next_time": chore.same_person_next_time,
-                "state": {
-                    "id": state.id,
-                    "chore_id": state.chore_id,
-                    "last_executor_id": state.last_executor_id,
-                    "last_execution_date": state.last_execution_date,
-                    "fixed_executor_id": state.fixed_executor_id,
-                    "next_execution_date": state.next_execution_date,
-                    "created_at": state.created_at,
-                    "updated_at": state.updated_at,
-                } if state else None,
-                "next_executor_id": next_executor_id,
-                "person_scores": person_scores if not chore.same_person_next_time else [],
-                "rankings": (
-                    []
-                    if chore.same_person_next_time
-                    else [{"person_id": r.person_id, "rating": r.rating} for r in chore.rankings]
-                ),
-            })
-        return {"chores": chores_data}
+        persisted = session.query(DatedChorePlan).filter(
+            DatedChorePlan.plan_date == effective_plan_date
+        ).first()
+        if persisted:
+            payload = json.loads(persisted.plan_data)
+            done_ids = {int(item) for item in payload.get("done_chore_ids", [])}
+            chores = payload.get("chores", [])
+            for chore in chores:
+                chore.setdefault("plan_date", effective_plan_date)
+                chore_id = int(chore.get("id", -1))
+                chore["is_done"] = chore_id in done_ids or bool(chore.get("is_done", False))
+            return {"chores": chores}
     finally:
         session.close()
+
+    generated = generate_and_store_plan(db, effective_plan_date)
+    chores = generated.get("chores", [])
+    for chore in chores:
+        chore.setdefault("plan_date", effective_plan_date)
+    return {"chores": chores}
 
 
 def create_chores_router(db: ChoresDatabase) -> APIRouter:
@@ -937,6 +1154,13 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
             )
             audit_update(session, "chore_state", chore_state.id, before_state, after_state, "auto")
 
+            effective_plan_date = _resolve_plan_date(request.plan_date)
+            _hide_chore_from_plan_snapshot(
+                session=session,
+                plan_date=effective_plan_date,
+                chore_id=request.chore_id,
+            )
+
             session.commit()
 
             return APIResponse(
@@ -1174,6 +1398,12 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
         finally:
             session.close()
 
+    @router.post("/plans/generate", response_model=APIResponse)
+    def generate_plan(request: PlanGenerationRequest):
+        """Generate or refresh a persisted chores plan for a selected date."""
+        plan = generate_and_store_plan(db, request.plan_date)
+        return APIResponse(success=True, data=plan)
+
     # ========================================================================
     # Ranking Endpoints
     # ========================================================================
@@ -1368,12 +1598,9 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
     # ========================================================================
 
     @router.get("/summary", response_model=APIResponse)
-    def get_chores_summary():
-        chores_data = build_chores_summary(db)
-        if chores_data["chores"]:
-            return APIResponse(success=True, data=chores_data)
-        else:
-            return APIResponse(success=False)
+    def get_chores_summary(plan_date: Optional[str] = Query(None)):
+        chores_data = build_chores_summary(db, plan_date=plan_date)
+        return APIResponse(success=True, data=chores_data)
 
     # ========================================================================
     # Audit Endpoints

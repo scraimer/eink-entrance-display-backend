@@ -72,6 +72,8 @@ def get_chores_from_database() -> List["Chore"]:
 
     chores_list = []
     for chore_data in summary.get("chores", []):
+        if chore_data.get("is_done"):
+            continue
         state = chore_data.get("state") or {}
         next_execution_date = state.get("next_execution_date")
 

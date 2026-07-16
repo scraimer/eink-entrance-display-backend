@@ -26,7 +26,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from . import my_calendar, weather, efrat_zmanim, chores, seating, data_cache
 from .config import LOCAL_TZ
 from .chores_db import ChoresDatabase
-from .chores_api import create_chores_router
+from .chores_api import create_chores_router, seed_default_chore_plans, refresh_tomorrow_chore_plan
 from .chores_audit import cleanup_audit_log
 from .chores_ui import generate_chores_ui_html
 from .sync_chores_from_sheets import sync_chores_from_sheets
@@ -161,6 +161,20 @@ def cleanup_audit_log_task():
         traceback.print_exc()
 
 
+def refresh_tomorrow_chore_plan_task():
+    """Background task that refreshes tomorrow's persisted chores plan."""
+    global chores_db
+    if not chores_db:
+        _logger.warning("Chores database not initialized; skipping tomorrow plan refresh")
+        return
+    try:
+        refresh_tomorrow_chore_plan(chores_db)
+        _logger.info("Tomorrow chore plan refresh completed")
+    except Exception as ex:
+        _logger.error(f"Error refreshing tomorrow chore plan: {ex}")
+        traceback.print_exc()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize the database on startup, start the scheduler, and clean up on shutdown."""
@@ -183,6 +197,8 @@ async def lifespan(app: FastAPI):
     router = create_chores_router(chores_db)
     app.include_router(router)
     _logger.info("Chores API router registered.")
+    seed_default_chore_plans(chores_db)
+    _logger.info("Seeded chores plans for today and tomorrow.")
 
     # Optionally sync chores from Google Sheets on startup
     if os.getenv("SYNC_CHORES_FROM_SHEETS", "").lower() == "true":
@@ -211,6 +227,14 @@ async def lifespan(app: FastAPI):
         minute=0,
         id='cleanup_audit_log',
         name='Cleanup old audit log entries daily at 2 AM'
+    )
+    scheduler.add_job(
+        refresh_tomorrow_chore_plan_task,
+        'cron',
+        hour=0,
+        minute=0,
+        id='refresh_tomorrow_chore_plan',
+        name='Refresh tomorrow chore plan daily at midnight'
     )
     scheduler.start()
     _logger.info(f"Background scheduler started (collecting data every {int(_DATA_REFRESH_INTERVAL.total_seconds() / 60)} minutes).")
@@ -900,4 +924,3 @@ async def what_has_changed(client_last_updated_at: Optional[str] = Query(None, e
 #    now_utc = datetime.datetime.now(datetime.timezone.utc)
 #    breakpoint()
 #    _is_data_type_relevant_at_time("seating", now_utc)
-

@@ -74,6 +74,32 @@ def test_bulk_next_due_date_success_updates_all_requested_chores():
             db_path.unlink()
 
 
+def test_bulk_next_due_date_keeps_updated_chores_in_plan_snapshot():
+    db, db_path = setup_test_db("plan_prune")
+    client = make_client(db)
+    try:
+        chore_id = create_chore(client, "Laundry")
+
+        gen = client.post("/api/v1/chores/plans/generate", json={"plan_date": "today"})
+        assert gen.status_code == 200, gen.text
+        assert any(c["id"] == chore_id for c in gen.json()["data"]["chores"])
+
+        response = client.put(
+            "/api/v1/chores/executions/bulk-next-due-date",
+            json={"chore_ids": [chore_id], "next_execution_date": "2099-01-01"},
+        )
+        assert response.status_code == 200, response.text
+
+        summary = client.get("/api/v1/chores/summary?plan_date=today")
+        assert summary.status_code == 200, summary.text
+        chores = summary.json()["data"]["chores"]
+        assert any(c["id"] == chore_id for c in chores)
+    finally:
+        db.close()
+        if db_path.exists():
+            db_path.unlink()
+
+
 def test_bulk_next_due_date_rejects_empty_selection():
     db, db_path = setup_test_db("empty")
     client = make_client(db)
