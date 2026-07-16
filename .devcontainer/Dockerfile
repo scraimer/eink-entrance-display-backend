@@ -45,3 +45,6 @@ RUN npm install -g @fission-ai/openspec@latest && \
     ln -s /usr/local/node-bin-dir/openspec /usr/local/bin/openspec
 
 RUN pip3 install isort
+
+# Install Copilot CLI
+RUN wget -qO- https://gh.io/copilot-install | bash
