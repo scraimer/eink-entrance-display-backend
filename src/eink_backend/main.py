@@ -118,7 +118,6 @@ def collect_all_data_task():
         ("zmanim", lambda: efrat_zmanim.collect_data(now_utc=now_utc)),
         ("weather", lambda: weather.collect_data(now_utc=now_utc)),
         ("calendar", lambda: my_calendar.collect_data()),
-        ("chores", lambda: chores.collect_data(now_utc=now_utc)),
         ("seating", lambda: seating.collect_data(now_utc=now_utc)),
     ]
 
@@ -448,7 +447,7 @@ def collect_all_values_of_data(
         if weather_report:
             weather_dict["weather_report"] = weather_report
     except Exception as ex:
-        msg = f"Exception colecting error report: {ex}"
+        msg = f"Exception collecting error report: {ex}"
         _logger.error(msg + f"\n{traceback.format_exc()}")
         weather_dict["weather_report"] = msg
         print(msg)
@@ -637,6 +636,16 @@ def get_cached_data_or_error(data_type: str, now_utc: datetime.datetime, force_r
     Raises:
         CacheMissError: If data is missing from cache and force_refresh is False
     """
+    if data_type == "chores":
+        # Chores are always collected fresh and never cached.
+        all_chores = chores.collect_data(now_utc=now_utc)
+        # NOCOMMIT
+        import pprint
+        todays_chores = [chore for chore in all_chores.chores if chore.due == now_utc.date()]
+        todays_chores_by_assignee_ordinal = sorted(todays_chores, key=lambda c: c.assignee_ordinal)
+        pprint.pprint(todays_chores_by_assignee_ordinal)
+        return all_chores
+
     if force_refresh:
         # Bypass cache and fetch fresh data
         _logger.info(f"force_refresh=True, fetching fresh {data_type} data")
@@ -646,8 +655,6 @@ def get_cached_data_or_error(data_type: str, now_utc: datetime.datetime, force_r
             return weather.collect_data(now_utc=now_utc)
         elif data_type == "calendar":
             return my_calendar.collect_data()
-        elif data_type == "chores":
-            return chores.collect_data(now_utc=now_utc)
         elif data_type == "seating":
             return seating.collect_data(now_utc=now_utc)
     

@@ -24,6 +24,12 @@ _logger: logging.Logger = logging.getLogger()
 UNASSIGNED_ORDINAL = 10**9
 
 
+def _plan_date_from_utc(now_utc: datetime.datetime) -> str:
+    """Return the local plan date for a UTC timestamp."""
+    local_date = now_utc.astimezone(config.LOCAL_TZ).date()
+    return local_date.isoformat()
+
+
 @dataclass
 class Chore:
     due: date
@@ -40,27 +46,19 @@ class ChoreData:
     error: Optional[str] = None
 
 
-def get_chores_from_database() -> List["Chore"]:
-    """Fetch chores directly from the database via build_chores_summary.
+def _chores_from_summary(summary: dict[str, list[dict[str, Any]]]) -> List["Chore"]:
+    # Build a person id→metadata lookup from the people table
+    from .chores_db import Person as _Person
 
-    Returns:
-        List of Chore objects
-    """
     from . import main as _main  # deferred to avoid circular import at module load
-    from .chores_api import build_chores_summary
-
     db = _main.chores_db
     if db is None:
         _logger.error("Chores database not initialized")
         return []
 
-    summary = build_chores_summary(db)
-
-    # Build a person id→metadata lookup from the people table
     people_by_id: Dict[int, Dict[str, Any]] = {}
     session = db.get_session()
     try:
-        from .chores_db import Person as _Person
         for person in session.query(_Person).all():
             people_by_id[person.id] = {
                 "name": person.name,
@@ -84,7 +82,9 @@ def get_chores_from_database() -> List["Chore"]:
             except (ValueError, TypeError):
                 due = date.today()
 
-        next_executor_id = state.get("fixed_executor_id") or chore_data.get("next_executor_id")
+        next_executor_id = chore_data.get("next_executor_id")
+        if chore_data.get("same_person_next_time"):
+            next_executor_id = state.get("fixed_executor_id") or next_executor_id
         assignee = ""
         assignee_avatar = ""
         assignee_ordinal = UNASSIGNED_ORDINAL
@@ -108,23 +108,58 @@ def get_chores_from_database() -> List["Chore"]:
     return chores_list
 
 
+def get_chores_from_database(plan_date: Optional[str] = None) -> List["Chore"]:
+    """Fetch chores directly from the database via build_chores_summary.
+
+    Args:
+        plan_date: Optional plan date string to use for the persisted plan snapshot.
+
+    Returns:
+        List of Chore objects
+    """
+    from . import main as _main  # deferred to avoid circular import at module load
+    from .chores_api import build_chores_summary
+
+    db = _main.chores_db
+    if db is None:
+        _logger.error("Chores database not initialized")
+        return []
+
+    if plan_date is None:
+        plan_date = _plan_date_from_utc(datetime.datetime.now(datetime.timezone.utc))
+
+    summary = build_chores_summary(db, plan_date=plan_date)
+    return _chores_from_summary(summary)
+
+
 EMPTY_CHORES = "-no chores data-"
 API_ERROR = "-error getting chores from database API-"
 
 
-def collect_data(now_utc: datetime) -> ChoreData:
+def collect_data(now_utc: datetime, force_refresh: bool = False) -> ChoreData:
     """Collect chores data from the database.
     
     Args:
         now_utc: Current UTC datetime
+        force_refresh: Ignored for chores, included for API compatibility
         
     Returns:
         ChoreData with chores list or error message
     """
+    plan_date = _plan_date_from_utc(now_utc)
+    from .chores_api import build_chores_summary
+    from . import main as _main  # deferred to avoid circular import at module load
+
+    db = _main.chores_db
+    if db is None:
+        _logger.error("Chores database not initialized")
+        return ChoreData(chores=[], error=API_ERROR)
+
     try:
-        chores = get_chores_from_database()
+        summary = build_chores_summary(db, plan_date=plan_date)
+        chores = _chores_from_summary(summary)
     except Exception as ex:
-        _logger.error(f"Exception {ex} in get_chores_from_database")
+        _logger.error(f"Exception {ex} in build_chores_summary")
         _logger.error(traceback.format_exc())
         return ChoreData(chores=[], error=API_ERROR)
     if not chores:
