@@ -260,8 +260,13 @@ def _build_plan_snapshot(
     """Build a full chores plan snapshot for a specific date."""
     done_ids = done_chore_ids or set()
     scores_by_chore: dict[int, list[dict[str, Any]]] = {}
-    for person_id, chore_id, score in compute_chore_scores(session, as_of_date_iso=target_plan_date):
-        scores_by_chore.setdefault(chore_id, []).append({"person_id": person_id, "score": score})
+    for cs in compute_chore_scores(session, as_of_date_iso=target_plan_date):
+        scores_by_chore.setdefault(cs.chore_id, []).append({
+            "person_id": cs.person_id,
+            "score": cs.score,
+            "execution_count": cs.execution_count,
+            "days_since_last": cs.days_since_last,
+        })
 
     chores = (
         session.query(Chore)

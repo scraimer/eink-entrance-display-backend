@@ -162,6 +162,8 @@
   .ranking-item { display: flex; align-items: center; gap: 0.5rem; }
   .ranking-item label { flex: 1; font-size: 0.85rem; }
   .ranking-item input { width: 4rem; }
+  .score-badge { cursor: pointer; user-select: none; }
+  .score-badge:hover { opacity: 0.8; }
 
   /* ---------- audit ---------- */
   pre.json-preview {
@@ -825,9 +827,19 @@ function choreDetailHTML(chore, state) {
   const scoreRows = (chore.person_scores || []).map(score => {
     const person = peopleMap[score.person_id];
     const isNext = score.person_id === chore.next_executor_id;
+    const days = score.days_since_last !== null && score.days_since_last !== undefined
+      ? score.days_since_last : 365;
+    const breakdown = `${score.execution_count !== undefined ? score.execution_count : '?'} × 1000 − ${days} = ${score.score}`;
     return `<div class="ranking-item" style="${isNext ? 'font-weight:700' : ''}">
       <label>${esc(person ? person.name : String(score.person_id))}</label>
-      <span class="badge badge-grey">${score.score}</span>
+      <span class="badge badge-grey score-badge"
+        data-execution-count="${score.execution_count ?? ''}"
+        data-days-since-last="${score.days_since_last !== null && score.days_since_last !== undefined ? score.days_since_last : ''}"
+        data-score="${score.score}"
+        data-score-label="${score.score}"
+        data-breakdown-label="${breakdown.replace(/'/g, '&#39;')}"
+        onclick="toggleScoreBreakdown(this)"
+        title="Click to toggle score breakdown">${score.score}</span>
     </div>`;
   }).join('');
   const personOptions = people.map(p =>
@@ -1385,6 +1397,21 @@ function esc(s) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+// ============================================================
+// Score breakdown toggle
+// ============================================================
+function toggleScoreBreakdown(badgeEl) {
+  const isShowingBreakdown = badgeEl.dataset.showingBreakdown === 'true';
+  if (isShowingBreakdown) {
+    badgeEl.textContent = badgeEl.dataset.scoreLabel || badgeEl.dataset.score || '';
+    badgeEl.dataset.showingBreakdown = 'false';
+    return;
+  }
+
+  badgeEl.textContent = badgeEl.dataset.breakdownLabel || '';
+  badgeEl.dataset.showingBreakdown = 'true';
 }
 
 // ============================================================

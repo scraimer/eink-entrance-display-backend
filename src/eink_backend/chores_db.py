@@ -422,17 +422,28 @@ SCORE_EXECUTION_WINDOW_DAYS = 730  # 2 years
 SCORE_RECENCY_CAP_DAYS = 365
 
 
+@dataclass
+class ChoreScore:
+    """Scoring result for one (person, chore) pair."""
+
+    person_id: int
+    chore_id: int
+    score: int
+    execution_count: int
+    days_since_last: int | None  # None when the person has never done this chore
+
+
 def compute_chore_scores(
     session: Session,
     as_of_date_iso: Optional[str] = None,
-) -> list[tuple[int, int, int]]:
+) -> list[ChoreScore]:
     """Compute weighted scores for every in-rotation person and chore pair.
 
     Only executions within the last SCORE_EXECUTION_WINDOW_DAYS days are counted.
     The recency term is capped at SCORE_RECENCY_CAP_DAYS.
 
     Returns:
-        List of (person_id, chore_id, score) tuples, one row per eligible pair.
+        List of ChoreScore instances, one per eligible (person, chore) pair.
     """
     effective_as_of = as_of_date_iso or utc_today_iso()
 
@@ -450,7 +461,9 @@ def compute_chore_scores(
                     ),
                     {SCORE_RECENCY_CAP_DAYS}
                 )
-            ) AS score
+            ) AS score,
+            CAST(COUNT(e.id) AS INTEGER) AS execution_count,
+            CAST(julianday(:as_of_date) - julianday(MAX(e.execution_date)) AS INTEGER) AS days_since_last
         FROM people AS p
         CROSS JOIN chores AS c
         LEFT JOIN executions AS e
@@ -463,7 +476,16 @@ def compute_chore_scores(
         """
     )
     rows = session.execute(query, {"as_of_date": effective_as_of}).all()
-    return [(int(row.person_id), int(row.chore_id), int(row.score)) for row in rows]
+    return [
+        ChoreScore(
+            person_id=int(row.person_id),
+            chore_id=int(row.chore_id),
+            score=int(row.score),
+            execution_count=int(row.execution_count),
+            days_since_last=int(row.days_since_last) if row.days_since_last is not None else None,
+        )
+        for row in rows
+    ]
 
 
 def get_next_executor_id(session: Session, chore: Chore) -> Optional[int]:
@@ -474,10 +496,10 @@ def get_next_executor_id(session: Session, chore: Chore) -> Optional[int]:
     if chore.same_person_next_time:
         return chore.state.fixed_executor_id if chore.state else None
 
-    chore_scores = [row for row in compute_chore_scores(session) if row[1] == chore.id]
+    chore_scores = [row for row in compute_chore_scores(session) if row.chore_id == chore.id]
     if not chore_scores:
         return None
-    return chore_scores[0][0]
+    return chore_scores[0].person_id
 
 
 def utc_now_iso() -> str:

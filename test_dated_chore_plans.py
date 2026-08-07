@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from eink_backend import chores as chores_module
 from eink_backend import main as main_module
 import eink_backend.chores_api as chores_api
-from eink_backend.chores_db import ChoresDatabase, DatedChorePlan, Person
+from eink_backend.chores_db import ChoresDatabase, DatedChorePlan, Person, Execution
 from eink_backend.chores_api import (
     _rebalance_due_soon_assignments,
     build_chores_summary,
@@ -298,6 +298,76 @@ def test_rebalance_moves_chores_when_one_person_has_five_or_more_due_soon_chores
     assert counts[2] > 0 or counts[3] > 0, "Expected at least one chore to be reassigned to another person"
     assert max(counts.values()) - min(counts.values()) <= 1
 
+def test_person_scores_include_breakdown_fields():
+    """person_scores entries include execution_count and days_since_last."""
+    db, db_path = setup_db("score_breakdown")
+    client = make_client(db)
+    try:
+        chore_id = seed_people_and_chore(client)
+
+        people_resp = client.get("/api/v1/chores/people")
+        people = people_resp.json()["data"]
+        alice = next(p for p in people if p["name"] == "Alice")
+
+        # Insert Alice's execution directly so we control the exact date.
+        plan_date = "2026-08-01"
+        exec_date = "2026-07-18"  # 14 days before plan_date
+        session = db.get_session()
+        try:
+            session.add(Execution(
+                chore_id=chore_id,
+                executor_id=alice["id"],
+                execution_date=exec_date,
+                created_at="2026-07-18T00:00:00Z",
+            ))
+            session.commit()
+        finally:
+            session.close()
+
+        client.post("/api/v1/chores/plans/generate", json={"plan_date": plan_date})
+        summary = client.get(f"/api/v1/chores/summary?plan_date={plan_date}").json()["data"]
+
+        chore = next(c for c in summary["chores"] if c["id"] == chore_id)
+        assert chore["person_scores"], "Expected person_scores to be non-empty"
+
+        for entry in chore["person_scores"]:
+            assert "execution_count" in entry, f"Missing execution_count in {entry}"
+            assert "days_since_last" in entry, f"Missing days_since_last key in {entry}"
+            assert "score" in entry
+
+        alice_entry = next(e for e in chore["person_scores"] if e["person_id"] == alice["id"])
+        assert alice_entry["execution_count"] == 1
+        assert alice_entry["days_since_last"] == 14
+        assert alice_entry["score"] == 1 * 1000 - 14  # 986
+    finally:
+        db.close()
+        db_path.unlink()
+
+
+def test_person_scores_never_done_chore_has_null_days_since_last():
+    """A person who has never done the chore gets execution_count=0 and days_since_last=null."""
+    db, db_path = setup_db("score_breakdown_never_done")
+    client = make_client(db)
+    try:
+        chore_id = seed_people_and_chore(client)
+
+        people_resp = client.get("/api/v1/chores/people")
+        people = people_resp.json()["data"]
+        bob = next(p for p in people if p["name"] == "Bob")
+
+        plan_date = "2026-08-01"
+        client.post("/api/v1/chores/plans/generate", json={"plan_date": plan_date})
+        summary = client.get(f"/api/v1/chores/summary?plan_date={plan_date}").json()["data"]
+
+        chore = next(c for c in summary["chores"] if c["id"] == chore_id)
+        bob_entry = next(e for e in chore["person_scores"] if e["person_id"] == bob["id"])
+
+        assert bob_entry["execution_count"] == 0
+        assert bob_entry["days_since_last"] is None
+        assert bob_entry["score"] == -365  # 0 * 1000 - 365
+    finally:
+        db.close()
+        db_path.unlink()
 
 def main():
     tests = [
@@ -307,6 +377,8 @@ def main():
         test_summary_without_plan_date_defaults_to_today_plan,
         test_chores_collect_data_uses_today_plan,
         test_rebalance_keeps_due_soon_gap_within_one,
+        test_person_scores_include_breakdown_fields,
+        test_person_scores_never_done_chore_has_null_days_since_last,
     ]
     failed = 0
     for test in tests:
