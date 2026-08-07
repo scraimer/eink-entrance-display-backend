@@ -48,3 +48,6 @@ RUN pip3 install isort
 
 # Install Copilot CLI
 RUN wget -qO- https://gh.io/copilot-install | bash
+
+# Install VSCode sandbox dependencies
+RUN apt-get update && apt-get install -y 'bubblewrap' 'socat' 'ripgrep'
