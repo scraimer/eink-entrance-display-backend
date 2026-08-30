@@ -220,6 +220,16 @@ class ExecutionWithStateResponse(BaseModel):
     updated_state: ChoreStateResponse
 
 
+class ExecutionReversalRequest(BaseModel):
+    """Request body for reversing a chore execution."""
+
+    chore_id: int = Field(..., ge=1)
+    plan_date: Optional[str] = Field(
+        None,
+        description="Plan date whose persisted snapshot should be restored (YYYY-MM-DD, today, tomorrow).",
+    )
+
+
 class ChoreWithStateResponse(BaseModel):
     """Chore with current state and rankings."""
 
@@ -465,6 +475,62 @@ def _hide_chore_from_plan_snapshot(
         item["is_done"] = item_id in done_ids
     plan_row.plan_data = json.dumps(payload)
     plan_row.updated_at = utc_now_iso()
+
+
+def _restore_chore_in_plan_snapshot(
+    session: Session,
+    plan_date: str,
+    chore_id: int,
+) -> None:
+    """Mark a chore as not done in the persisted plan snapshot for a specific date."""
+    plan_row = session.query(DatedChorePlan).filter(DatedChorePlan.plan_date == plan_date).first()
+    if plan_row is None:
+        snapshot = _build_plan_snapshot(session, target_plan_date=plan_date, done_chore_ids=set())
+        plan_row = DatedChorePlan(
+            plan_date=plan_date,
+            plan_data=json.dumps(snapshot),
+            created_at=utc_now_iso(),
+            updated_at=utc_now_iso(),
+        )
+        session.add(plan_row)
+        session.flush()
+
+    payload = json.loads(plan_row.plan_data)
+    done_ids = {int(item) for item in payload.get("done_chore_ids", [])}
+    if chore_id in done_ids:
+        done_ids.remove(chore_id)
+    payload["done_chore_ids"] = sorted(done_ids)
+    chores = payload.get("chores", [])
+    for item in chores:
+        item_id = int(item.get("id", -1))
+        item["is_done"] = item_id in done_ids
+    plan_row.plan_data = json.dumps(payload)
+    plan_row.updated_at = utc_now_iso()
+
+
+def _execution_state_from_latest_history(session: Session, chore_id: int) -> tuple[Optional[Execution], Optional[ChoreState], Optional[dict[str, Any]]]:
+    """Return the latest execution, the current chore state, and its before snapshot."""
+    latest_execution = (
+        session.query(Execution)
+        .filter(Execution.chore_id == chore_id)
+        .order_by(Execution.execution_date.desc(), Execution.created_at.desc(), Execution.id.desc())
+        .first()
+    )
+    chore_state = session.query(ChoreState).filter(ChoreState.chore_id == chore_id).first()
+    if chore_state is None:
+        return latest_execution, None, None
+
+    before_state = {
+        "id": chore_state.id,
+        "chore_id": chore_state.chore_id,
+        "last_executor_id": chore_state.last_executor_id,
+        "last_execution_date": chore_state.last_execution_date,
+        "fixed_executor_id": chore_state.fixed_executor_id,
+        "next_execution_date": chore_state.next_execution_date,
+        "created_at": chore_state.created_at,
+        "updated_at": chore_state.updated_at,
+    }
+    return latest_execution, chore_state, before_state
 
 
 def seed_default_chore_plans(db: ChoresDatabase) -> None:
@@ -1183,6 +1249,113 @@ def create_chores_router(db: ChoresDatabase) -> APIRouter:
                         executor_id=execution.executor_id,
                         execution_date=execution.execution_date,
                         created_at=execution.created_at,
+                    ),
+                    updated_state=ChoreStateResponse(
+                        id=chore_state.id,
+                        chore_id=chore_state.chore_id,
+                        last_executor_id=chore_state.last_executor_id,
+                        last_execution_date=chore_state.last_execution_date,
+                        fixed_executor_id=chore_state.fixed_executor_id,
+                        next_execution_date=chore_state.next_execution_date,
+                        created_at=chore_state.created_at,
+                        updated_at=chore_state.updated_at,
+                    ),
+                ),
+            )
+        except HTTPException:
+            session.rollback()
+            raise
+        except Exception as e:
+            session.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            session.close()
+
+    @router.delete("/executions/latest", response_model=APIResponse)
+    def reverse_execution(request: ExecutionReversalRequest):
+        """Reverse the latest execution for a chore and restore prior state."""
+        session = db.get_session()
+        try:
+            chore = session.query(Chore).filter(Chore.id == request.chore_id).first()
+            if not chore:
+                raise HTTPException(status_code=404, detail="Chore not found")
+
+            latest_execution, chore_state, before_state = _execution_state_from_latest_history(session, request.chore_id)
+            if latest_execution is None or chore_state is None or before_state is None:
+                raise HTTPException(status_code=400, detail="No reversible execution found for chore")
+
+            execution_before = {
+                "id": latest_execution.id,
+                "chore_id": latest_execution.chore_id,
+                "executor_id": latest_execution.executor_id,
+                "execution_date": latest_execution.execution_date,
+                "created_at": latest_execution.created_at,
+            }
+
+            remaining_execution = (
+                session.query(Execution)
+                .filter(
+                    Execution.chore_id == request.chore_id,
+                    Execution.id != latest_execution.id,
+                )
+                .order_by(Execution.execution_date.desc(), Execution.created_at.desc(), Execution.id.desc())
+                .first()
+            )
+
+            session.delete(latest_execution)
+
+            now = utc_now_iso()
+            if remaining_execution is None:
+                chore_state.last_executor_id = None
+                chore_state.last_execution_date = None
+                chore_state.fixed_executor_id = None
+                chore_state.next_execution_date = None
+            else:
+                next_execution_date = (
+                    datetime.strptime(remaining_execution.execution_date, "%Y-%m-%d").date()
+                    + timedelta(weeks=chore.frequency_in_weeks)
+                ).isoformat()
+                chore_state.last_executor_id = remaining_execution.executor_id
+                chore_state.last_execution_date = remaining_execution.execution_date
+                if chore.same_person_next_time:
+                    chore_state.fixed_executor_id = remaining_execution.executor_id
+                else:
+                    chore_state.fixed_executor_id = None
+                chore_state.next_execution_date = next_execution_date
+            chore_state.updated_at = now
+
+            after_state = {
+                "id": chore_state.id,
+                "chore_id": chore_state.chore_id,
+                "last_executor_id": chore_state.last_executor_id,
+                "last_execution_date": chore_state.last_execution_date,
+                "fixed_executor_id": chore_state.fixed_executor_id,
+                "next_execution_date": chore_state.next_execution_date,
+                "created_at": chore_state.created_at,
+                "updated_at": chore_state.updated_at,
+            }
+
+            audit_delete(session, "executions", latest_execution.id, execution_before, "api")
+            audit_update(session, "chore_state", chore_state.id, before_state, after_state, "auto")
+
+            effective_plan_date = _resolve_plan_date(request.plan_date)
+            _restore_chore_in_plan_snapshot(
+                session=session,
+                plan_date=effective_plan_date,
+                chore_id=request.chore_id,
+            )
+
+            session.commit()
+
+            return APIResponse(
+                success=True,
+                data=ExecutionWithStateResponse(
+                    execution=ExecutionResponse(
+                        id=latest_execution.id,
+                        chore_id=latest_execution.chore_id,
+                        executor_id=latest_execution.executor_id,
+                        execution_date=latest_execution.execution_date,
+                        created_at=latest_execution.created_at,
                     ),
                     updated_state=ChoreStateResponse(
                         id=chore_state.id,

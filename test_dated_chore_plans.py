@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for persisted dated chore plans."""
 
+import json
 import sys
 from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
@@ -14,7 +15,7 @@ from fastapi.testclient import TestClient
 from eink_backend import chores as chores_module
 from eink_backend import main as main_module
 import eink_backend.chores_api as chores_api
-from eink_backend.chores_db import ChoresDatabase, DatedChorePlan, Person, Execution
+from eink_backend.chores_db import ChoresDatabase, DatedChorePlan, Person, Execution, AuditLogEntry
 from eink_backend.chores_api import (
     _rebalance_due_soon_assignments,
     build_chores_summary,
@@ -116,6 +117,87 @@ def test_execution_hides_chore_from_selected_plan():
 
     db.close()
     db_path.unlink()
+
+
+def test_execution_reversal_restores_state_and_plan_visibility():
+    db, db_path = setup_db("execution_reversal")
+    client = make_client(db)
+    chore_id = seed_people_and_chore(client)
+
+    target = "2026-07-22"
+    first = client.post("/api/v1/chores/plans/generate", json={"plan_date": target})
+    assert first.status_code == 200, first.text
+
+    people = client.get("/api/v1/chores/people").json()["data"]
+    alice = next(p for p in people if p["name"] == "Alice")
+
+    done = client.post(
+        "/api/v1/chores/executions",
+        json={"chore_id": chore_id, "executor_id": alice["id"], "plan_date": target},
+    )
+    assert done.status_code == 201, done.text
+
+    undone = client.request(
+        "DELETE",
+        "/api/v1/chores/executions/latest",
+        json={"chore_id": chore_id, "plan_date": target},
+    )
+    assert undone.status_code == 200, undone.text
+    payload = undone.json()["data"]
+    assert payload["execution"]["chore_id"] == chore_id
+    assert payload["updated_state"]["last_executor_id"] is None
+    assert payload["updated_state"]["last_execution_date"] is None
+    assert payload["updated_state"]["next_execution_date"] is None
+
+    refreshed = client.get(f"/api/v1/chores/summary?plan_date={target}")
+    assert refreshed.status_code == 200, refreshed.text
+    chores = refreshed.json()["data"]["chores"]
+    assert len(chores) == 1
+    assert chores[0]["is_done"] is False
+
+    session = db.get_session()
+    try:
+        execution_count = session.query(Execution).filter(Execution.chore_id == chore_id).count()
+        assert execution_count == 0
+
+        plan_row = session.query(DatedChorePlan).filter(DatedChorePlan.plan_date == target).one()
+        plan_payload = json.loads(plan_row.plan_data)
+        assert chore_id not in plan_payload["done_chore_ids"]
+        assert all(not item["is_done"] for item in plan_payload["chores"] if item["id"] == chore_id)
+
+        audit_rows = (
+            session.query(AuditLogEntry)
+            .all()
+        )
+        assert any(row.table_name == "executions" and row.operation == "DELETE" for row in audit_rows)
+        assert any(row.table_name == "chore_state" and row.operation == "UPDATE" for row in audit_rows)
+    finally:
+        session.close()
+        db.close()
+        db_path.unlink()
+
+
+def test_execution_reversal_fails_without_execution():
+    db, db_path = setup_db("execution_reversal_missing")
+    client = make_client(db)
+    chore_id = seed_people_and_chore(client)
+
+    response = client.request(
+        "DELETE",
+        "/api/v1/chores/executions/latest",
+        json={"chore_id": chore_id, "plan_date": "2026-07-22"},
+    )
+    assert response.status_code == 400, response.text
+    assert "No reversible execution" in response.text
+
+    session = db.get_session()
+    try:
+        execution_count = session.query(Execution).filter(Execution.chore_id == chore_id).count()
+        assert execution_count == 0
+    finally:
+        session.close()
+        db.close()
+        db_path.unlink()
 
 
 def test_midnight_helper_matches_manual_generation_format():

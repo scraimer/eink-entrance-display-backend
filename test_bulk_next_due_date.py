@@ -186,3 +186,11 @@ def test_chores_ui_contains_bulk_due_date_controls():
     assert "bulk-next-date" in html
     assert "bulk-apply-btn" in html
     assert "/executions/bulk-next-due-date" in html
+
+
+def test_chores_ui_contains_mark_not_done_flow():
+    html = generate_chores_ui_html()
+    assert "Mark as not Done" in html
+    assert "function markNotDone" in html
+    assert "/executions/latest" in html
+    assert "canUndoDone" in html

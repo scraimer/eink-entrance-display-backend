@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Sub-panel trigger link visible when chore is scheduled and not completed
 When a chore detail panel is shown, a next executor is assigned, and the chore is not already completed, the UI SHALL display a secondary text link that opens an alternative-executor sub-panel.
 
@@ -31,10 +33,3 @@ Clicking the "Done by someone else?" link SHALL reveal an inline sub-panel with 
 #### Scenario: Confirm button disabled with no selection
 - **WHEN** the sub-panel is open and no person is selected in the dropdown
 - **THEN** the "Confirm" button SHALL be disabled
-
-### Requirement: Execution recorded against chosen person
-When the alternative-executor path is confirmed, the execution SHALL be recorded against the chosen person, not the originally scheduled executor.
-
-#### Scenario: Correct executor_id sent to API
-- **WHEN** the user picks person X from the sub-panel dropdown and confirms
-- **THEN** the `POST /executions` body SHALL contain `executor_id` equal to person X's id

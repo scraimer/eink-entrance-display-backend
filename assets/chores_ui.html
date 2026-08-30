@@ -824,6 +824,7 @@ function choreDetailHTML(chore, state) {
   const lastPerson = peopleMap[state.last_executor_id];
   const nextPerson = peopleMap[chore.next_executor_id];
   const canMarkDone = !!chore.next_executor_id && !chore.is_done;
+  const canUndoDone = !!chore.is_done;
   const scoreRows = (chore.person_scores || []).map(score => {
     const person = peopleMap[score.person_id];
     const isNext = score.person_id === chore.next_executor_id;
@@ -857,11 +858,14 @@ function choreDetailHTML(chore, state) {
     ${chore.same_person_next_time ? `<div style="margin:0.5rem 0 0.75rem"><span class="badge badge-purple">Fixed executor</span></div>` : `<div class="rankings-grid" style="margin-top:0.25rem">${scoreRows}</div>`}
     <div id="done-error-${chore.id}" class="error-banner"></div>
     <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-      <button class="btn btn-success btn-sm"
-        ${canMarkDone ? '' : 'disabled title="No next executor scheduled"'}
+      ${canMarkDone ? `<button class="btn btn-success btn-sm"
         onclick="markDone(${chore.id}, ${chore.next_executor_id})">
         ✓ Mark as Done
-      </button>
+      </button>` : ''}
+      ${canUndoDone ? `<button class="btn btn-ghost btn-sm"
+        onclick="markNotDone(${chore.id})">
+        Mark as not Done
+      </button>` : ''}
       ${canMarkDone ? `<a href="#" id="done-by-other-link-${chore.id}"
         style="font-size:0.8rem;color:#718096"
         onclick="event.preventDefault();showDoneByOther(${chore.id})">Done by someone else?</a>` : ''}
@@ -903,6 +907,24 @@ async function markDone(choreId, executorId) {
     showSuccess(
       'chores-success',
       `Execution recorded and hidden from plan ${selectedPlanDate}.`
+    );
+  } catch(e) {
+    showError('done-error-' + choreId, e.message);
+  }
+}
+
+async function markNotDone(choreId) {
+  clearError('done-error-' + choreId);
+  clearSuccess('chores-success');
+  try {
+    await api('DELETE', '/executions/latest', {
+      chore_id: choreId,
+      plan_date: selectedPlanDate,
+    });
+    await loadChores();
+    showSuccess(
+      'chores-success',
+      `Completion reverted for plan ${selectedPlanDate}.`
     );
   } catch(e) {
     showError('done-error-' + choreId, e.message);

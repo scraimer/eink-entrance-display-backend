@@ -29,24 +29,28 @@ Each score badge SHALL be interactive: clicking it SHALL toggle an inline breakd
 - **WHEN** the user clicks a score badge for a person with `execution_count: 0` and `days_since_last: null`
 - **THEN** the breakdown SHALL show `0 × 1000 − 365 = -365`
 
-### Requirement: Chore detail panel includes mark-as-done action
-The chore detail panel SHALL include a primary "Mark as Done" button and a secondary "Done by someone else?" link. Both controls are only available when a next executor is scheduled.
+### Requirement: Chore detail panel includes completion controls
+The chore detail panel SHALL display a primary "Mark as Done" button when the chore is not yet completed. When the chore is already completed, the primary control SHALL be replaced by a visible "Mark as not Done" button in the same location. The "Done by someone else?" link SHALL only be visible when the chore is not yet completed and a next executor is scheduled. The primary completion button for an incomplete chore SHALL be disabled when no next executor is scheduled.
 
-#### Scenario: Primary button marks chore done with scheduled executor
-- **WHEN** the user clicks "Mark as Done"
-- **THEN** `POST /executions` SHALL be called with the `next_executor_id` as the executor
+#### Scenario: Incomplete chore with next executor shows completion action
+- **WHEN** a chore detail panel is shown for a chore that is not yet completed and `next_executor_id` is set
+- **THEN** the panel SHALL show a "Mark as Done" button that calls `POST /executions` with the `next_executor_id` as the executor
+- **AND THEN** the "Done by someone else?" link SHALL be visible
 
-#### Scenario: Primary button disabled when no executor scheduled
-- **WHEN** `next_executor_id` is null
-- **THEN** the "Mark as Done" button SHALL be disabled
+#### Scenario: Incomplete chore without next executor disables completion action
+- **WHEN** a chore detail panel is shown for a chore that is not yet completed and `next_executor_id` is null
+- **THEN** the panel SHALL show a disabled "Mark as Done" button
+- **AND THEN** the "Done by someone else?" link SHALL NOT be rendered
 
-#### Scenario: Secondary link opens alternative-executor sub-panel
-- **WHEN** the user clicks "Done by someone else?"
-- **THEN** an inline sub-panel SHALL appear (see `mark-done-by-other` spec for sub-panel requirements)
+#### Scenario: Completed chore shows undo action instead of completion action
+- **WHEN** a chore detail panel is shown for a chore that is already completed
+- **THEN** the panel SHALL show a "Mark as not Done" button in place of the "Mark as Done" button
+- **AND THEN** the "Done by someone else?" link SHALL NOT be rendered
 
-#### Scenario: Secondary link not shown when no executor scheduled
-- **WHEN** `next_executor_id` is null
-- **THEN** the "Done by someone else?" link SHALL NOT be rendered
+#### Scenario: Undo action reverses the completion and refreshes the list
+- **WHEN** the user clicks "Mark as not Done" for a completed chore
+- **THEN** the UI SHALL call the reversal operation for that chore
+- **AND THEN** the chore list SHALL refresh so the chore appears not done again
 
 ## ADDED Requirements
 
