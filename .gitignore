@@ -16,3 +16,4 @@ google-sheets-bot-auth.json
 node_modules
 /data_cache.sqlite
 /chores.sqlite
+/.codegraph/codegraph.db
