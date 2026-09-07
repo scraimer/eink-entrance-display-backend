@@ -417,6 +417,8 @@ def collect_all_values_of_data(
     now_utc: datetime.datetime,
 ) -> Dict[str, Any]:
     heb_date = dates.HebrewDate.from_pydate(now_utc.date())
+    now_is_after_starlight: bool = False
+    zmanim_dict: Dict[str, Any] = {}
     if zmanim:
         try:
             parasha = parshios.getparsha_string(heb_date, israel=True, hebrew=True)
@@ -426,16 +428,18 @@ def collect_all_values_of_data(
                 "parasha": parasha,
                 **{k: v for k, v in zmanim.times.items()},
             }
+            now_is_after_starlight = _is_now_after_starlight(
+                now_utc=now_utc,
+                tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
         # TODO: Can I do this try/except in some more uniform manner (print_exception_on_screen, and set value to {"error": "message of error"} or something)
         except Exception as ex:
             print(f"Warning: Could not collect zmanim data. Exception: {ex}")
-            # TODO: indent
+            # TODO: indent exception
             traceback.print_exc()
             zmanim_dict = {"Error": str(ex)}
     else:
         print("Warning: no zmanim data available.")
 
-    now_is_after_starlight = _is_now_after_starlight(now_utc=now_utc, tzet_shabbat=zmanim_dict.get("tzet_shabat", None))
     omer = omer_count(now_utc=now_utc, now_is_after_starlight=now_is_after_starlight)
 
     weather_dict = {"weather_report": ""}
