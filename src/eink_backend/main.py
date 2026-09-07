@@ -179,6 +179,8 @@ async def lifespan(app: FastAPI):
     """Initialize the database on startup, start the scheduler, and clean up on shutdown."""
     global scheduler, chores_db
 
+    efrat_zmanim.init(_logger)
+
     # Initialize the cache database
     data_cache.init_db(_logger)
     data_cache.clean_expired_records(older_than_days=30)

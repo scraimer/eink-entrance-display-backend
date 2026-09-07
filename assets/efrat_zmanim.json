@@ -1,388 +1,353 @@
 [
+    {   
+        "tzet_shabat": "18:34",
+        "candle_lighting": "19:26",
+        "gregorian_date": "2026-09-12",
+        "name": "ראש השנה"
+    },    
     {
-        "tzet_shabat": "19:10",
-        "candle_lighting": "18:20",
-        "gregorian_date": "2025-09-23",
-        "name": "א' ראש השנה"
-    },
+        "tzet_shabat": "19:17",
+        "candle_lighting": "18:25",
+        "gregorian_date": "2026-09-19",
+        "name": "האזינו שבת שובה"
+    },    
     {
-        "tzet_shabat": "19:09",
-        "candle_lighting": "19:10 ינפל אל",
-        "gregorian_date": "2025-09-24",
-        "name": "ב' ראש השנה"
-    },
+        "tzet_shabat": "19:08",
+        "candle_lighting": "18:16",
+        "gregorian_date": "2026-09-26",
+        "name": "חג הסוכות"
+    },    
     {
-        "fast_end": "18:53",
-        "fast_start": "04:55",
-        "gregorian_date": "2025-09-25",
-        "name": "צום גדליה"
-    },
-    {
-        "tzet_shabat": "19:06",
-        "candle_lighting": "18:15",
-        "gregorian_date": "2025-09-27",
-        "name": "וילך שובה"
-    },
-    {
-        "tzet_shabat": "19:00",
-        "candle_lighting": "18:08",
-        "gregorian_date": "2025-10-02",
-        "name": "יום כיפור"
-    },
-    {
-        "tzet_shabat": "18:57",
-        "candle_lighting": "18:06",
-        "gregorian_date": "2025-10-04",
-        "name": "האזינו"
-    },
-    {
-        "tzet_shabat": "18:53",
-        "candle_lighting": "18:02",
-        "gregorian_date": "2025-10-07",
-        "name": "סוכות"
-    },
-    {
-        "tzet_shabat": "18:48",
-        "candle_lighting": "17:57",
-        "gregorian_date": "2025-10-11",
-        "name": "שבת חול המועד"
-    },
-    {
-        "tzet_shabat": "18:44",
-        "candle_lighting": "17:53",
-        "gregorian_date": "2025-10-14",
+        "tzet_shabat": "18:59",
+        "candle_lighting": "18:07",
+        "gregorian_date": "2026-10-03",
         "name": "שמחת תורה"
     },
+
+
     {
-        "tzet_shabat": "18:40",
-        "candle_lighting": "17:49",
-        "gregorian_date": "2025-10-18",
+        "tzet_shabat": "18:49",
+        "candle_lighting": "17:58",
+        "gregorian_date": "2026-10-10",
         "name": "בראשית"
     },
     {
-        "tzet_shabat": "18:34",
-        "candle_lighting": "17:41",
-        "gregorian_date": "2025-10-25",
+        "tzet_shabat": "18:41",
+        "candle_lighting": "17:50",
+        "gregorian_date": "2026-10-17",
         "name": "נח"
     },
     {
-        "tzet_shabat": "17:27",
-        "candle_lighting": "16:34",
-        "gregorian_date": "2025-11-01",
-        "name": "לך לך (שעון חורף)"
+        "tzet_shabat": "18:35",
+        "candle_lighting": "17:42",
+        "gregorian_date": "2026-10-24",
+        "name": "לך לך"
     },
     {
-        "tzet_shabat": "17:21",
-        "candle_lighting": "16:29",
-        "gregorian_date": "2025-11-08",
+        "tzet_shabat": "17:28",
+        "candle_lighting": "16:35",
+        "gregorian_date": "2026-10-31",
         "name": "וירא"
     },
     {
-        "tzet_shabat": "17:18",
-        "candle_lighting": "16:24",
-        "gregorian_date": "2025-11-15",
+        "tzet_shabat": "17:22",
+        "candle_lighting": "16:30",
+        "gregorian_date": "2026-11-07",
         "name": "חיי שרה"
+    },
+    {
+        "tzet_shabat": "17:18",
+        "candle_lighting": "16:25",
+        "gregorian_date": "2026-11-14",
+        "name": "תולדות"
     },
     {
         "tzet_shabat": "17:15",
         "candle_lighting": "16:21",
-        "gregorian_date": "2025-11-22",
-        "name": "תולדות"
-    },
-    {
-        "tzet_shabat": "17:14",
-        "candle_lighting": "16:20",
-        "gregorian_date": "2025-11-29",
+        "gregorian_date": "2026-11-21",
         "name": "ויצא"
     },
     {
         "tzet_shabat": "17:14",
-        "candle_lighting": "16:19",
-        "gregorian_date": "2025-12-06",
+        "candle_lighting": "16:20",
+        "gregorian_date": "2026-11-28",
         "name": "וישלח"
+    },
+    {
+        "tzet_shabat": "17:13",
+        "candle_lighting": "16:19",
+        "gregorian_date": "2026-12-05",
+        "name": "וישב"
     },
     {
         "tzet_shabat": "17:15",
         "candle_lighting": "16:20",
-        "gregorian_date": "2025-12-13",
-        "name": "וישב"
-    },
-    {
-        "gregorian_date": "2025-12-15",
-        "name": "א' חנוכה"
-    },
-    {
-        "tzet_shabat": "17:18",
-        "candle_lighting": "16:22",
-        "gregorian_date": "2025-12-20",
+        "gregorian_date": "2026-12-12",
         "name": "מקץ"
     },
     {
-        "tzet_shabat": "17:22",
-        "candle_lighting": "16:26",
-        "gregorian_date": "2025-12-27",
+        "tzet_shabat": "17:17",
+        "candle_lighting": "16:22",
+        "gregorian_date": "2026-12-19",
         "name": "ויגש"
     },
     {
-        "fast_end": "17:05",
-        "fast_start": "05:00",
-        "gregorian_date": "2025-12-30",
-        "name": "צום י' בטבת"
-    },
-    {
-        "tzet_shabat": "17:26",
-        "candle_lighting": "16:30",
-        "gregorian_date": "2026-01-03",
+        "tzet_shabat": "17:21",
+        "candle_lighting": "16:25",
+        "gregorian_date": "2026-12-26",
         "name": "ויחי"
     },
     {
         "tzet_shabat": "17:31",
         "candle_lighting": "16:36",
-        "gregorian_date": "2026-01-10",
+        "gregorian_date": "2027-01-02",
         "name": "שמות"
     },
     {
-        "tzet_shabat": "17:37",
-        "candle_lighting": "16:42",
-        "gregorian_date": "2026-01-17",
+        "tzet_shabat": "17:30",
+        "candle_lighting": "16:35",
+        "gregorian_date": "2027-01-09",
         "name": "וארא"
     },
     {
-        "tzet_shabat": "17:43",
-        "candle_lighting": "16:48",
-        "gregorian_date": "2026-01-24",
+        "tzet_shabat": "17:36",
+        "candle_lighting": "16:41",
+        "gregorian_date": "2027-01-16",
         "name": "בא"
     },
     {
+        "tzet_shabat": "99:99",
+        "candle_lighting": "99:99",
+        "gregorian_date": "2027-01-23",
+        "name": "FAKE SHABBAT - End of Data",
+        "everything else": [
+
+    {
         "tzet_shabat": "17:49",
         "candle_lighting": "16:55",
-        "gregorian_date": "2026-01-31",
+        "gregorian_date": "2027-01-23",
         "name": "בשלח"
     },
     {
         "tzet_shabat": "17:55",
         "candle_lighting": "17:01",
-        "gregorian_date": "2026-02-07",
+        "gregorian_date": "2027-01-30",
         "name": "יתרו"
     },
     {
         "tzet_shabat": "18:01",
         "candle_lighting": "17:07",
-        "gregorian_date": "2026-02-14",
+        "gregorian_date": "2027-02-06",
         "name": "משפטים שקלים"
     },
     {
         "tzet_shabat": "18:05",
         "candle_lighting": "17:12",
-        "gregorian_date": "2026-02-21",
+        "gregorian_date": "2027-02-13",
         "name": "תרומה"
     },
     {
         "tzet_shabat": "18:11",
         "candle_lighting": "17:18",
-        "gregorian_date": "2026-02-28",
+        "gregorian_date": "2027-02-20",
         "name": "תצוה זכור"
     },
     {
         "fast_end": "17:57",
         "fast_start": "04:35",
-        "gregorian_date": "2026-03-02",
+        "gregorian_date": "2027-02-27",
         "name": "תענית אסתר"
     },
     {
-        "gregorian_date": "2026-03-03",
+        "gregorian_date": "2027-02-28",
         "name": "פורים"
     },
     {
         "tzet_shabat": "18:16",
         "candle_lighting": "17:23",
-        "gregorian_date": "2026-03-07",
+        "gregorian_date": "2027-03-06",
         "name": "כי תשא פרה"
     },
     {
         "tzet_shabat": "18:21",
         "candle_lighting": "17:27",
-        "gregorian_date": "2026-03-14",
+        "gregorian_date": "2027-03-13",
         "name": "ויקהל פקודי החודש"
     },
     {
         "tzet_shabat": "18:26",
         "candle_lighting": "17:32",
-        "gregorian_date": "2026-03-21",
+        "gregorian_date": "2027-03-20",
         "name": "ויקרא"
     },
     {
         "tzet_shabat": "19:32",
         "candle_lighting": "18:37",
-        "gregorian_date": "2026-03-28",
+        "gregorian_date": "2027-03-27",
         "name": "צו הגדול (שעון קיץ)"
     },
     {
         "tzet_shabat": "19:35",
         "candle_lighting": "18:40",
-        "gregorian_date": "2026-04-02",
+        "gregorian_date": "2027-04-03",
         "name": "פסח"
     },
     {
         "tzet_shabat": "19:37",
         "candle_lighting": "18:42",
-        "gregorian_date": "2026-04-04",
+        "gregorian_date": "2027-04-10",
         "name": "שבת חול המועד"
     },
     {
         "tzet_shabat": "19:39",
         "candle_lighting": "18:44",
-        "gregorian_date": "2026-04-08",
+        "gregorian_date": "2027-04-17",
         "name": "שביעי של פסח"
     },
     {
         "tzet_shabat": "19:42",
         "candle_lighting": "18:46",
-        "gregorian_date": "2026-04-11",
+        "gregorian_date": "2027-04-24",
         "name": "שמיני"
     },
     {
         "tzet_shabat": "19:47",
         "candle_lighting": "18:51",
-        "gregorian_date": "2026-04-18",
+        "gregorian_date": "2027-04-18",
         "name": "תזריע-מצורע"
     },
     {
         "tzet_shabat": "19:52",
         "candle_lighting": "18:56",
-        "gregorian_date": "2026-04-25",
+        "gregorian_date": "2027-04-25",
         "name": "אחרי מות-קדושים"
     },
     {
         "tzet_shabat": "19:58",
         "candle_lighting": "19:01",
-        "gregorian_date": "2026-05-02",
+        "gregorian_date": "2027-05-02",
         "name": "אמור"
     },
     {
         "tzet_shabat": "20:04",
         "candle_lighting": "19:06",
-        "gregorian_date": "2026-05-09",
+        "gregorian_date": "2027-05-09",
         "name": "בהר-בחוקותי"
     },
     {
         "tzet_shabat": "20:09",
         "candle_lighting": "19:10",
-        "gregorian_date": "2026-05-16",
+        "gregorian_date": "2027-05-16",
         "name": "במדבר"
-    },
-    {
-        "tzet_shabat": "20:14",
-        "candle_lighting": "19:15",
-        "gregorian_date": "2026-05-22",
-        "name": "שבועות"
     },
     {
         "tzet_shabat": "20:15",
         "candle_lighting": "20:14 ינפל אל",
-        "gregorian_date": "2026-05-23",
+        "gregorian_date": "2027-05-23",
         "name": "נשא"
     },
     {
         "tzet_shabat": "20:20",
         "candle_lighting": "19:20",
-        "gregorian_date": "2026-05-30",
+        "gregorian_date": "2027-05-30",
         "name": "בהעלותך"
     },
     {
         "tzet_shabat": "20:24",
         "candle_lighting": "19:24",
-        "gregorian_date": "2026-06-06",
+        "gregorian_date": "2027-06-06",
         "name": "שלח"
     },
     {
         "tzet_shabat": "20:28",
         "candle_lighting": "19:27",
-        "gregorian_date": "2026-06-13",
+        "gregorian_date": "2027-06-13",
         "name": "קרח"
     },
     {
         "tzet_shabat": "20:30",
         "candle_lighting": "19:29",
-        "gregorian_date": "2026-06-20",
+        "gregorian_date": "2027-06-20",
         "name": "חוקת"
     },
     {
         "tzet_shabat": "20:31",
         "candle_lighting": "19:31",
-        "gregorian_date": "2026-06-27",
+        "gregorian_date": "2027-06-27",
         "name": "בלק"
     },
     {
         "fast_end": "20:08",
         "fast_start": "03:41",
-        "gregorian_date": "2026-07-02",
+        "gregorian_date": "2027-07-02",
         "name": "צום י\"ז בתמוז"
     },
     {
         "tzet_shabat": "20:32",
         "candle_lighting": "19:31",
-        "gregorian_date": "2026-07-04",
+        "gregorian_date": "2027-07-04",
         "name": "פינחס"
     },
     {
         "tzet_shabat": "20:31",
         "candle_lighting": "19:30",
-        "gregorian_date": "2026-07-11",
+        "gregorian_date": "2027-07-11",
         "name": "מטות-מסעי"
     },
     {
         "tzet_shabat": "20:27",
         "candle_lighting": "19:28",
-        "gregorian_date": "2026-07-18",
+        "gregorian_date": "2027-07-18",
         "name": "דברים חזון"
     },
     {
         "fast_end": "20:10",
         "fast_start": "19:46",
-        "gregorian_date": "2026-07-23",
+        "gregorian_date": "2027-07-23",
         "name": "תשעה באב"
     },
     {
         "tzet_shabat": "20:23",
         "candle_lighting": "19:25",
-        "gregorian_date": "2026-07-25",
+        "gregorian_date": "2027-07-25",
         "name": "ואתחנן נחמו"
     },
     {
         "tzet_shabat": "20:18",
         "candle_lighting": "19:20",
-        "gregorian_date": "2026-08-01",
+        "gregorian_date": "2027-08-01",
         "name": "עקב"
     },
     {
         "tzet_shabat": "20:11",
         "candle_lighting": "19:15",
-        "gregorian_date": "2026-08-08",
+        "gregorian_date": "2027-08-08",
         "name": "ראה"
     },
     {
         "tzet_shabat": "20:03",
         "candle_lighting": "19:08",
-        "gregorian_date": "2026-08-15",
+        "gregorian_date": "2027-08-15",
         "name": "שופטים"
     },
     {
         "tzet_shabat": "19:55",
         "candle_lighting": "19:00",
-        "gregorian_date": "2026-08-22",
+        "gregorian_date": "2027-08-22",
         "name": "כי תצא"
     },
     {
         "tzet_shabat": "19:46",
         "candle_lighting": "18:52",
-        "gregorian_date": "2026-08-29",
+        "gregorian_date": "2027-08-29",
         "name": "כי תבוא"
     },
     {
         "tzet_shabat": "19:36",
         "candle_lighting": "18:43",
-        "gregorian_date": "2026-09-05",
+        "gregorian_date": "2027-09-05",
         "name": "נצבים וילך"
     }
+
+        ], "end of fake data": "yup" }
 ]

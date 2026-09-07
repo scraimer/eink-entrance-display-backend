@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, timedelta, datetime, time
 import json
+import logging
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -13,6 +14,15 @@ class ShabbatZmanim:
 
 
 ZMANIM_DB_SRC = "assets/efrat_zmanim.json"
+
+_logger: logging.Logger = None
+"""This is the logger that the data_cache uses"""
+
+
+def init(logger: logging.Logger):
+    """Initialize the SQLite database with the required schema."""
+    global _logger
+    _logger = logger
 
 
 def find_zmanim_for_day(day: date, efrat_zmanim: Dict[str, Union[str, int]]):
@@ -44,6 +54,7 @@ def find_nearest_shabbat_or_yom_tov(
     for i in range(HOW_MANY_DAYS_TO_LOOK_AHEAD):
         day = now_local.date() + (i * DAY)
         if day.weekday() == 5:  # Saturday
+            _logger.debug(f"Checking Shabbat for day: {day}")
             found = [z for z in find_zmanim_for_day(day, efrat_zmanim)]
             if found:
                 for z in found:
@@ -52,6 +63,7 @@ def find_nearest_shabbat_or_yom_tov(
                         date=day, time=time(), tzinfo=now_local.tzinfo
                     )
                 day_zmanims += found
+    _logger.debug(f"Found day_zmanims: {day_zmanims=}")
     if len(day_zmanims) > 0:
         z = day_zmanims[0]
         keys = ("name", "candle_lighting", "tzet_shabat", "fast_start", "fast_end")
@@ -68,6 +80,7 @@ def find_nearest_shabbat_or_yom_tov(
                     f"{out_data['candle_lighting']}"
                 )
         if "tzet_shabat" in out_data:
+            _logger.debug(f"Parsing tzet shabat for: {out_data['tzet_shabat']}")
             d = z["datetime"]
             out_data["tset_shabat_as_datetime"] = datetime.combine(
                 date=d.date(),
@@ -75,6 +88,7 @@ def find_nearest_shabbat_or_yom_tov(
                 tzinfo=d.tzinfo,
             )
         return ShabbatZmanim(name=out_data["name"], times=out_data)
+    _logger.debug("No day_zmanims found, returning None")
     return None
 
 
