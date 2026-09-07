@@ -306,7 +306,6 @@ def clip_image_to_device_dimensions_in_place(file_to_modify: Path, color: str) -
             text += (
                 f" Height of image is {image.height}, exceeding max of {DEVICE_HEIGHT}."
             )
-        print(text)
         font_size = 10
         font = ImageFont.truetype(str(root_dir / "assets/fonts/arial.ttf"), font_size)
         draw = ImageDraw.Draw(image)
@@ -401,7 +400,7 @@ def _is_now_after_starlight(now_utc: datetime.datetime, tzet_shabbat: Optional[s
     hour_s = starlight_estimate_s[0:2]
     minute_s = starlight_estimate_s[3:5]
     starlight = datetime.time(hour=int(hour_s), minute=int(minute_s))
-    print(f"'{starlight=}'")
+    _logger.debug(f"'{starlight=}'")
     if now_utc.time() > starlight:
         return True
     return False
@@ -564,9 +563,8 @@ def find_missing_template_keys(
     dollar_keys = set([f"${x}" for x in all_values.keys()])
     missing_keys = template_required_keys - dollar_keys
     if missing_keys:
-        print(
-            "Warning: the following template variable missing.\n"
-            "They will be replaced by a placeholder:\n" + str(missing_keys)
+        _logger.warning(
+            "Warning: the following template variables are missing, they will be replaced by a placeholder:\n\t" + str(missing_keys)
         )
         # raise KeyError("Required keys are missing:", missing_keys)
         # Fill in the missing keys, to avoid failing

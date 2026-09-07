@@ -560,7 +560,6 @@ def build_chores_summary(
     """
     effective_plan_date = _resolve_plan_date(plan_date)
     import pprint
-    print(f"{effective_plan_date=}")
     session = db.get_session()
     try:
         persisted = session.query(DatedChorePlan).filter(
@@ -574,7 +573,6 @@ def build_chores_summary(
                 chore.setdefault("plan_date", effective_plan_date)
                 chore_id = int(chore.get("id", -1))
                 chore["is_done"] = chore_id in done_ids or bool(chore.get("is_done", False))
-            pprint.pprint(chores)
             return {"chores": chores}
     finally:
         session.close()

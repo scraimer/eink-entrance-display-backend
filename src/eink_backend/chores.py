@@ -103,7 +103,6 @@ def _chores_from_summary(summary: dict[str, list[dict[str, Any]]]) -> List["Chor
             assignee_ordinal=assignee_ordinal,
             frequency_in_weeks=chore_data.get("frequency_in_weeks", 1),
         ))
-        _logger.debug(f"Added record #{len(chores_list)}")
 
     return chores_list
 
