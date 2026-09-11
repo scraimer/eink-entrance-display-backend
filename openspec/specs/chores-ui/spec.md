@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# chores-ui Specification
+
+## Purpose
+
+Define the browser-facing behavior of the chore management interface, including chore display, completion controls, plan management, and score presentation.
+
+## Requirements
 
 ### Requirement: Chore table shows per-person weighted scores for the selected plan date
 The Chores UI chore list SHALL display, for each variable-executor chore row, the stored score of every in-rotation person for the selected plan date. Scores SHALL be sorted ascending (lowest first). Fixed-executor chores SHALL show the fixed executor's avatar with a lock or "fixed" label instead of scores.
@@ -51,8 +57,6 @@ The chore detail panel SHALL display a primary "Mark as Done" button when the ch
 - **WHEN** the user clicks "Mark as not Done" for a completed chore
 - **THEN** the UI SHALL call the reversal operation for that chore
 - **AND THEN** the chore list SHALL refresh so the chore appears not done again
-
-## ADDED Requirements
 
 ### Requirement: Management UI can trigger plan calculation for the selected plan date
 The Chores UI Management tab SHALL show the currently selected plan date explicitly and provide refresh controls for that date, with shortcuts for today and tomorrow.
