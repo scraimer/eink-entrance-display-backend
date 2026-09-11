@@ -62,6 +62,36 @@ sync_chores_from_sheets(db)
 "
 ```
 
+### Chore Management Icon and PWA Assets
+
+The `/chores` page uses the following browser and installable-app assets:
+
+- `assets/icons/icon-192.png`: 192x192 app icon and Apple touch icon
+- `assets/icons/icon-512.png`: 512x512 installable PWA icon
+- `assets/favicon.ico`: ICO fallback for browser tabs and older clients
+- `assets/manifest.webmanifest`: PWA name, display settings, and icon references
+- `assets/chores_ui.html`: links to the manifest, favicon, theme color, and Apple touch icon
+
+To update the broom artwork:
+
+1. Replace both PNG files with square 192x192 and 512x512 versions of the new artwork. Keep the artwork consistent between the two sizes.
+2. Regenerate the ICO fallback from the 512px PNG with Pillow:
+
+    ```shell
+    python -c "from PIL import Image; image = Image.open('assets/icons/icon-512.png'); image.save('assets/favicon.ico', format='ICO', sizes=[(16, 16), (32, 32), (48, 48)])"
+    ```
+
+3. If the asset paths change, update them in both `assets/manifest.webmanifest` and the metadata in `assets/chores_ui.html`. Keep the manifest `start_url` set to `/chores` and `display` set to `standalone` for PWA installation.
+4. Run the focused validation tests:
+
+    ```shell
+    pytest -q test_chore_favicon.py
+    ```
+
+    These tests verify the PNG dimensions, ICO format, manifest JSON, HTML metadata, response media types, and served bytes.
+
+Browsers cache favicons and manifests. After deploying an update, use a hard refresh or remove and reinstall the `/chores` app to see changed artwork. PWA installation also requires a secure browser context, such as HTTPS or localhost.
+
 ## Developement Mode
 
 ### In the devcontainer

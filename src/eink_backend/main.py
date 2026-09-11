@@ -267,6 +267,42 @@ def chores_ui():
     return generate_chores_ui_html()
 
 
+@app.get("/favicon.ico", response_class=FileResponse)
+def favicon():
+    """Serve the browser icon for the chore management UI."""
+    favicon_path = root_dir / "assets" / "favicon.ico"
+    if not favicon_path.is_file():
+        raise HTTPException(status_code=404, detail="Favicon not found")
+    return FileResponse(str(favicon_path), media_type="image/x-icon")
+
+
+@app.get("/manifest.webmanifest", response_class=FileResponse)
+def webmanifest():
+    """Serve install metadata for the chore management UI."""
+    manifest_path = root_dir / "assets" / "manifest.webmanifest"
+    if not manifest_path.is_file():
+        raise HTTPException(status_code=404, detail="Web app manifest not found")
+    return FileResponse(str(manifest_path), media_type="application/manifest+json")
+
+
+@app.get("/icons/icon-192.png", response_class=FileResponse)
+def chore_icon_192():
+    """Serve the 192px chore management app icon."""
+    icon_path = root_dir / "assets" / "icons" / "icon-192.png"
+    if not icon_path.is_file():
+        raise HTTPException(status_code=404, detail="192px icon not found")
+    return FileResponse(str(icon_path), media_type="image/png")
+
+
+@app.get("/icons/icon-512.png", response_class=FileResponse)
+def chore_icon_512():
+    """Serve the 512px chore management app icon."""
+    icon_path = root_dir / "assets" / "icons" / "icon-512.png"
+    if not icon_path.is_file():
+        raise HTTPException(status_code=404, detail="512px icon not found")
+    return FileResponse(str(icon_path), media_type="image/png")
+
+
 def untaint_filename(filename: str) -> str:
     return re.sub(r"[^a-zA-Z_-]", "_", filename)
 
