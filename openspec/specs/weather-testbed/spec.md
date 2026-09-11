@@ -1,3 +1,11 @@
+# weather-testbed Specification
+
+## Purpose
+
+Define the standalone synthetic weather chart testbed and its generated outputs.
+
+## Requirements
+
 ### Requirement: Testbed script generates weather charts from synthetic data
 The system SHALL provide a standalone script `tools/weather_testbed.py` that constructs a `WeatherForecast` fixture with pre-loaded hourly data and renders four PNG chart images without making any network requests.
 

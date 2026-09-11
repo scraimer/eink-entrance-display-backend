@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# same-person-next-time Specification
+
+## Purpose
+
+Define the same-person-next-time flag and its effect on chore execution and rankings.
+
+## Requirements
 
 ### Requirement: Chore has same-person-next-time flag
 A `Chore` SHALL have a boolean attribute `same_person_next_time` (default `false`) that pins the executor across executions.

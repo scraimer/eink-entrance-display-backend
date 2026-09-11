@@ -1,4 +1,10 @@
-## ADDED Requirements
+# fixed-chore-executor Specification
+
+## Purpose
+
+Define fixed-executor storage, API updates, and migration behavior for chores that do not rotate.
+
+## Requirements
 
 ### Requirement: Chore state stores a fixed executor
 A `chore_state` row SHALL have a `fixed_executor_id` column (nullable FK → people) that designates the one person who always performs this chore. When `fixed_executor_id` is set, the weighted scoring algorithm SHALL be bypassed for that chore.

@@ -1,3 +1,11 @@
+# discomfort-zone-markers Specification
+
+## Purpose
+
+Define discomfort-zone detection and its visual markers in weather charts.
+
+## Requirements
+
 ### Requirement: Discomfort zone boundary function
 The script SHALL expose a `discomfort_zone(values, *, low=None, high=None) -> tuple[int, int] | None` function that returns a tuple of `(first_idx, last_idx)` where `first_idx` is the lowest index at which any value is in discomfort, and `last_idx` is the highest such index. Returns `None` when no values are in discomfort.
 

@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# chores-api Specification
+
+## Purpose
+
+Define the HTTP API behavior for chore state, plan generation, execution recording, scoring, and reversal.
+
+## Requirements
 
 ### Requirement: Chore state response includes a persisted plan for the requested date
 The chore state object returned by `GET /api/v1/chores/summary` SHALL include the stored plan for the requested plan date, including `plan_date`, `next_executor_id`, and `person_scores` for variable-executor chores. The returned values SHALL come from persisted plan records for that date rather than from client-side recalculation. The requested plan date MAY be today, tomorrow, or any valid ISO date. For fixed-executor chores, `person_scores` SHALL be an empty array.
@@ -18,8 +24,6 @@ The chore state object returned by `GET /api/v1/chores/summary` SHALL include th
 #### Scenario: Summary returns no scores for fixed-executor chore
 - **WHEN** a client calls `GET /api/v1/chores/summary` for a chore with `same_person_next_time: true`
 - **THEN** `person_scores` SHALL be an empty array
-
-## ADDED Requirements
 
 ### Requirement: Chores API supports generating a plan for a chosen date
 The chores API SHALL expose an operation that generates or refreshes a stored plan for a requested target date, including any valid ISO date.

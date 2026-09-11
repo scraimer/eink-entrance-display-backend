@@ -1,4 +1,10 @@
-## ADDED Requirements
+# dated-chore-plans Specification
+
+## Purpose
+
+Define persistence and lifecycle behavior for chore plans associated with target dates.
+
+## Requirements
 
 ### Requirement: Chore plans are persisted by plan date
 The system SHALL store a separate chore plan for each target plan date so that plans for today and tomorrow can exist at the same time.

@@ -1,3 +1,11 @@
+# mark-done-by-other Specification
+
+## Purpose
+
+Define the alternative-executor workflow for recording a chore completed by someone else.
+
+## Requirements
+
 ### Requirement: Sub-panel trigger link visible when chore is scheduled and not completed
 When a chore detail panel is shown, a next executor is assigned, and the chore is not already completed, the UI SHALL display a secondary text link that opens an alternative-executor sub-panel.
 

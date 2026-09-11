@@ -1,4 +1,10 @@
-## ADDED Requirements
+# fair-chore-distribution Specification
+
+## Purpose
+
+Define weighted fair distribution of chores across people in the rotation.
+
+## Requirements
 
 ### Requirement: Next executor is computed from weighted execution history
 For chores without a fixed executor, the system SHALL dynamically select the next executor using a score formula applied to execution history. The formula is: `score = (1000 × execution_count) + (−1 × min(days_since_last_execution_by_that_person, 365))`. The person with the lowest score SHALL be the next executor. Only people with `in_rotation = true` are eligible. A person who has never performed the chore SHALL receive an effective `days_since_last_execution` of 365 for scoring purposes.

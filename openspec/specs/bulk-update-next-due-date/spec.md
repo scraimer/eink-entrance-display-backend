@@ -1,4 +1,10 @@
-## ADDED Requirements
+# bulk-update-next-due-date Specification
+
+## Purpose
+
+Define bulk operations for updating the next due dates of multiple chores.
+
+## Requirements
 
 ### Requirement: Bulk next due date update operation
 The system SHALL provide an operation that updates the next due date for multiple chores in one request.
